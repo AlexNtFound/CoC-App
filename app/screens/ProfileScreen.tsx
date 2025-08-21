@@ -44,10 +44,10 @@ export default function ProfileScreen() {
   const { themeMode, setThemeMode, isDark } = useTheme();
   
   const [user, setUser] = useState<UserProfile>({
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@university.edu',
+    name: 'Anonymous Whale',
+    email: 'anonymous.whale@university.edu',
     campus: 'University of California',
-    year: 'Junior',
+    year: 'Freshman',
     joinDate: 'September 2023',
     eventsAttended: 15,
     studiesCompleted: 8,

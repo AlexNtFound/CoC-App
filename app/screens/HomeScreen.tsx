@@ -20,7 +20,7 @@ interface Announcement {
   content: string;
   author: string;
   date: string;
-  type: 'general' | 'prayer' | 'urgent';
+  type: 'general' | 'prayer' | 'urgent' | 'blending';
 }
 
 interface Event {
@@ -53,28 +53,28 @@ export default function HomeScreen() {
     setAnnouncements([
       {
         id: '1',
-        title: 'Weekly Bible Study',
-        content: 'Join us this Thursday at 7 PM in the Student Center for our study on Romans. Bring your Bible and a friend!',
-        author: 'Pastor John',
-        date: '2025-08-19',
+        title: 'Weekly Bible Study 每周校园读经',
+        content: 'Join us this Wednesday at 12 PM in 606 Soda Hall.',
+        author: 'Alex',
+        date: '2025-09-03',
         type: 'general'
       },
       {
         id: '2',
-        title: 'Prayer Meeting',
-        content: 'Please pray for Sarah who is going through a difficult time with her family. Let\'s lift her up in prayer.',
-        author: 'Ministry Team',
-        date: '2025-08-18',
-        type: 'prayer'
+        title: 'Small Group Meeting 周五家中小聚',
+        content: 'Join us this Friday 6:30 PM and we can enjoy food and Lord tgth!',
+        author: 'Alex',
+        date: '2025-08-22',
+        type: 'blending'
       },
-      {
-        id: '3',
-        title: 'Urgent: Event Location Changed',
-        content: 'This Friday\'s fellowship dinner has been moved to Room 205 due to maintenance in the original location.',
-        author: 'Event Team',
-        date: '2025-08-17',
-        type: 'urgent'
-      }
+      // {
+      //   id: '3',
+      //   title: 'Urgent: Event Location Changed',
+      //   content: 'This Friday\'s fellowship dinner has been moved to Room 205 due to maintenance in the original location.',
+      //   author: 'Event Team',
+      //   date: '2025-08-17',
+      //   type: 'urgent'
+      // }
     ]);
 
     setUpcomingEvents([

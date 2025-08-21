@@ -7,9 +7,8 @@ import {
   Modal,
   RefreshControl,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -26,7 +25,7 @@ interface Event {
   time: string;
   location: string;
   organizer: string;
-  category: 'worship' | 'study' | 'fellowship' | 'outreach' | 'prayer';
+  category: 'worship' | 'study' | 'fellowship' | 'blending' | 'prayer';
   attendeeCount: number;
   maxAttendees?: number;
   isRSVPed: boolean;
@@ -60,7 +59,7 @@ export default function EventsScreen() {
     { key: 'worship', label: t('events.worship'), icon: '🙏' },
     { key: 'study', label: t('events.study'), icon: '📖' },
     { key: 'fellowship', label: t('events.fellowship'), icon: '🤝' },
-    { key: 'outreach', label: t('events.outreach'), icon: '❤️' },
+    { key: 'blending', label: t('events.blending'), icon: '❤️' },
     { key: 'prayer', label: t('events.prayer'), icon: '🕊️' },
   ];
 
@@ -116,13 +115,13 @@ export default function EventsScreen() {
       },
       {
         id: '4',
-        title: 'Campus Outreach',
+        title: 'Campus Blending',
         description: 'Join us as we share the Gospel around campus. We\'ll be distributing free coffee and Bibles while engaging in conversations with students.',
         date: '2025-08-27',
         time: '10:00 AM',
         location: 'Campus Library Plaza',
         organizer: 'Outreach Ministry',
-        category: 'outreach',
+        category: 'blending',
         attendeeCount: 12,
         maxAttendees: 20,
         isRSVPed: false,
@@ -456,17 +455,17 @@ export default function EventsScreen() {
       />
 
       {/* Add Event Button */}
-      <ThemedView style={styles.headerActions}>
+      {/* <ThemedView style={styles.headerActions}>
         <TouchableOpacity 
           style={styles.addEventButton}
           onPress={() => Alert.alert(t('events.add'), t('events.addEventFeature'))}
         >
           <ThemedText style={styles.addEventButtonText}>{t('events.add')}</ThemedText>
         </TouchableOpacity>
-      </ThemedView>
+      </ThemedView> */}
 
       {/* Search Bar */}
-      <ThemedView style={styles.searchContainer}>
+      {/* <ThemedView style={styles.searchContainer}>
         <TextInput
           style={[styles.searchInput, { borderColor, color: textColor }]}
           placeholder={t('events.searchEvents')}
@@ -474,7 +473,7 @@ export default function EventsScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-      </ThemedView>
+      </ThemedView> */}
 
       {/* Category Filter */}
       {renderCategoryFilter()}
