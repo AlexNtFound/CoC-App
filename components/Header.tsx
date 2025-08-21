@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useThemeColor } from '../hooks/useThemeColor';
+import ThemedProfileIcon from './ThemedProfileIcon'; // 新增导入
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
@@ -82,9 +83,8 @@ export default function Header({ showBackButton = false, title, onBackPress, sho
               onPress={handleProfilePress}
               style={styles.profileButton}
             >
-              <ThemedView style={styles.profileIcon}>
-                <ThemedText style={styles.profileIconText}>👤</ThemedText>
-              </ThemedView>
+              {/* 替换旧的头像图标为主题化头像 */}
+              <ThemedProfileIcon size={32} />
             </TouchableOpacity>
           )}
         </ThemedView>
@@ -146,16 +146,7 @@ const styles = StyleSheet.create({
   profileButton: {
     padding: 4,
   },
-  profileIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#45b7d1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileIconText: {
-    fontSize: 16,
-    color: 'white',
-  },
+  // 移除了以下样式，因为现在使用 ThemedProfileIcon：
+  // profileIcon: { ... }
+  // profileIconText: { ... }
 });

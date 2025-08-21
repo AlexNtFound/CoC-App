@@ -11,23 +11,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
+import ThemedProfileIcon from '../../components/ThemedProfileIcon'; // 添加导入
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useUser } from '../../contexts/UserContext'; // 添加UserContext导入
 import { useThemeColor } from '../../hooks/useThemeColor';
-
-interface UserProfile {
-  name: string;
-  email: string;
-  campus: string;
-  year: string;
-  joinDate: string;
-  eventsAttended: number;
-  studiesCompleted: number;
-  prayerRequestsSubmitted: number;
-  profileImage?: string;
-}
 
 interface SettingsItem {
   id: string;
@@ -42,18 +32,8 @@ interface SettingsItem {
 export default function ProfileScreen() {
   const { language, setLanguage, t } = useLanguage();
   const { themeMode, setThemeMode, isDark } = useTheme();
+  const { user } = useUser(); // 使用UserContext获取用户数据
   
-  const [user, setUser] = useState<UserProfile>({
-    name: 'Anonymous Whale',
-    email: 'anonymous.whale@university.edu',
-    campus: 'University of California',
-    year: 'Freshman',
-    joinDate: 'September 2023',
-    eventsAttended: 15,
-    studiesCompleted: 8,
-    prayerRequestsSubmitted: 3,
-  });
-
   const [notifications, setNotifications] = useState(true);
   const [prayerReminders, setPrayerReminders] = useState(true);
   const [eventReminders, setEventReminders] = useState(true);
@@ -64,6 +44,11 @@ export default function ProfileScreen() {
   const cardBackground = useThemeColor({}, 'background');
   const borderColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
+
+  // 导航到编辑页面的函数
+  const handleEditProfile = () => {
+    router.push('/profile-edit');
+  };
 
   const handleThemePress = () => {
     Alert.alert(
@@ -186,7 +171,7 @@ export default function ProfileScreen() {
           subtitle: t('profile.editProfileDesc'),
           type: 'navigation' as const,
           icon: '👤',
-          action: () => Alert.alert(t('profile.editProfile'), t('profile.featureComingSoon')),
+          action: handleEditProfile, // 更新为实际的导航函数
         },
         {
           id: 'prayer-requests',
@@ -335,15 +320,12 @@ export default function ProfileScreen() {
         <View style={[styles.profileCard, { backgroundColor: cardBackground, borderColor }]}>
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
-              <View style={styles.profileImagePlaceholder}>
-                <ThemedText style={styles.profileImageText}>
-                  {user.name.split(' ').map(n => n[0]).join('')}
-                </ThemedText>
-              </View>
+              {/* 使用主题化头像替换原来的头像 */}
+              <ThemedProfileIcon size={80} />
             </View>
             <TouchableOpacity 
               style={styles.editButton}
-              onPress={() => Alert.alert(t('profile.editProfile'), t('profile.editProfile') + ' ' + t('profile.featureComingSoon'))}
+              onPress={handleEditProfile} // 更新为实际的导航函数
             >
               <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
             </TouchableOpacity>
@@ -423,19 +405,6 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     alignItems: 'center',
-  },
-  profileImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#45b7d1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileImageText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
   },
   editButton: {
     paddingHorizontal: 16,

@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { UserProvider } from '../contexts/UserContext'; // 添加UserProvider导入
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -24,6 +25,13 @@ function RootLayoutNav() {
           options={{ 
             headerShown: false,
             presentation: 'modal' // 可选：使Profile以模态方式显示
+          }} 
+        />
+        <Stack.Screen 
+          name="profile-edit" 
+          options={{ 
+            headerShown: false,
+            presentation: 'modal' // Profile Edit也以模态方式显示
           }} 
         />
         <Stack.Screen name="+not-found" />
@@ -51,7 +59,9 @@ export default function RootLayout() {
   return (
     <CustomThemeProvider>
       <LanguageProvider>
-        <RootLayoutNav />
+        <UserProvider>
+          <RootLayoutNav />
+        </UserProvider>
       </LanguageProvider>
     </CustomThemeProvider>
   );
