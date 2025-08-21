@@ -1,155 +1,86 @@
 // app/screens/ProfileScreen.tsx
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { router } from 'expo-router';
+import React from 'react';
 import {
   Alert,
   ScrollView,
   StyleSheet,
   Switch,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import Header from '../../components/Header';
-import ThemedProfileIcon from '../../components/ThemedProfileIcon'; // 添加导入
+import ThemedProfileIcon from '../../components/ThemedProfileIcon';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useUser } from '../../contexts/UserContext'; // 添加UserContext导入
+import { useUser } from '../../contexts/UserContext';
 import { useThemeColor } from '../../hooks/useThemeColor';
 
 interface SettingsItem {
   id: string;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   type: 'toggle' | 'navigation' | 'action';
   icon: string;
   value?: boolean;
   action?: () => void;
 }
 
-export default function ProfileScreen() {
-  const { language, setLanguage, t } = useLanguage();
-  const { themeMode, setThemeMode, isDark } = useTheme();
-  const { user } = useUser(); // 使用UserContext获取用户数据
-  
-  const [notifications, setNotifications] = useState(true);
-  const [prayerReminders, setPrayerReminders] = useState(true);
-  const [eventReminders, setEventReminders] = useState(true);
+interface SettingsSection {
+  title: string;
+  items: SettingsItem[];
+}
 
+export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { t, language, setLanguage } = useLanguage();
+  const { user } = useUser();
+  const { isDark, toggleTheme } = useTheme();
+  
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({}, 'background');
   const borderColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
 
-  // 导航到编辑页面的函数
   const handleEditProfile = () => {
     router.push('/profile-edit');
   };
 
   const handleThemePress = () => {
-    Alert.alert(
-      t('profile.appearance'),
-      t('profile.darkModeDesc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: '☀️ Light', 
-          onPress: () => setThemeMode('light'),
-          style: themeMode === 'light' ? 'destructive' : 'default'
-        },
-        { 
-          text: '🌙 Dark', 
-          onPress: () => setThemeMode('dark'),
-          style: themeMode === 'dark' ? 'destructive' : 'default'
-        },
-        { 
-          text: '📱 System', 
-          onPress: () => setThemeMode('system'),
-          style: themeMode === 'system' ? 'destructive' : 'default'
-        }
-      ]
-    );
+    toggleTheme();
   };
 
   const handleLanguagePress = () => {
     Alert.alert(
       t('profile.language'),
-      t('profile.languageDesc'),
+      t('profile.selectLanguage'),
       [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: 'English', 
-          onPress: () => setLanguage('en'),
-          style: language === 'en' ? 'destructive' : 'default'
-        },
-        { 
-          text: '中文', 
-          onPress: () => setLanguage('zh'),
-          style: language === 'zh' ? 'destructive' : 'default'
-        }
+        { text: 'English', onPress: () => setLanguage('en') },
+        { text: '中文', onPress: () => setLanguage('zh') },
+        { text: t('profile.cancel'), style: 'cancel' },
       ]
     );
-  };
-
-  const getThemeDisplayText = () => {
-    switch (themeMode) {
-      case 'light': return '☀️ Light';
-      case 'dark': return '🌙 Dark';
-      case 'system': return '📱 System';
-      default: return '📱 System';
-    }
   };
 
   const getLanguageDisplayText = () => {
     return language === 'en' ? 'English' : '中文';
   };
 
-  const settingsSections = [
+  const settingsSections: SettingsSection[] = [
     {
-      title: t('profile.notifications'),
+      title: t('profile.preferences'),
       items: [
         {
-          id: 'push-notifications',
-          title: t('profile.pushNotifications'),
-          subtitle: t('profile.pushNotificationsDesc'),
-          type: 'toggle' as const,
-          icon: '🔔',
-          value: notifications,
-          action: () => setNotifications(!notifications),
-        },
-        {
-          id: 'event-reminders',
-          title: t('profile.eventReminders'),
-          subtitle: t('profile.eventRemindersDesc'),
-          type: 'toggle' as const,
-          icon: '📅',
-          value: eventReminders,
-          action: () => setEventReminders(!eventReminders),
-        },
-        {
-          id: 'prayer-reminders',
-          title: t('profile.prayerReminders'),
-          subtitle: t('profile.prayerRemindersDesc'),
-          type: 'toggle' as const,
-          icon: '🙏',
-          value: prayerReminders,
-          action: () => setPrayerReminders(!prayerReminders),
-        },
-      ],
-    },
-    {
-      title: t('profile.appearance'),
-      items: [
-        {
-          id: 'theme-mode',
+          id: 'theme',
           title: t('profile.darkMode'),
-          subtitle: `Current: ${getThemeDisplayText()}`,
-          type: 'navigation' as const,
+          subtitle: isDark ? t('profile.darkModeOn') : t('profile.darkModeOff'),
+          type: 'toggle' as const,
           icon: isDark ? '🌙' : '☀️',
+          value: isDark,
           action: handleThemePress,
         },
         {
@@ -171,7 +102,7 @@ export default function ProfileScreen() {
           subtitle: t('profile.editProfileDesc'),
           type: 'navigation' as const,
           icon: '👤',
-          action: handleEditProfile, // 更新为实际的导航函数
+          action: handleEditProfile,
         },
         {
           id: 'prayer-requests',
@@ -235,7 +166,13 @@ export default function ProfileScreen() {
               t('profile.signOutConfirm'),
               [
                 { text: t('profile.cancel'), style: 'cancel' },
-                { text: t('profile.signOut'), style: 'destructive', onPress: () => Alert.alert(t('profile.signedOut'), t('profile.signOut') + ' ' + t('profile.featureComingSoon')) }
+                { 
+                  text: t('profile.signOut'), 
+                  style: 'destructive',
+                  onPress: () => {
+                    Alert.alert(t('profile.success'), t('profile.signOutSuccess'));
+                  }
+                },
               ]
             );
           },
@@ -247,9 +184,9 @@ export default function ProfileScreen() {
   const renderSettingsItem = (item: SettingsItem) => (
     <TouchableOpacity
       key={item.id}
-      style={[styles.settingsItem, { backgroundColor: cardBackground, borderBottomColor: borderColor }]}
+      style={styles.settingsItem}
       onPress={item.action}
-      disabled={item.type === 'toggle'}
+      activeOpacity={0.7}
     >
       <View style={styles.settingsItemLeft}>
         <View style={styles.settingsIcon}>
@@ -257,9 +194,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.settingsItemText}>
           <ThemedText style={styles.settingsItemTitle}>{item.title}</ThemedText>
-          {item.subtitle && (
-            <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
-          )}
+          <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
         </View>
       </View>
       
@@ -267,7 +202,7 @@ export default function ProfileScreen() {
         <Switch
           value={item.value}
           onValueChange={item.action}
-          trackColor={{ false: '#e0e0e0', true: '#45b7d1' }}
+          trackColor={{ false: '#767577', true: '#45b7d1' }}
           thumbColor={item.value ? '#ffffff' : '#ffffff'}
         />
       )}
@@ -318,17 +253,17 @@ export default function ProfileScreen() {
       >
         {/* Profile Card */}
         <View style={[styles.profileCard, { backgroundColor: cardBackground, borderColor }]}>
-          <View style={styles.profileHeader}>
-            <View style={styles.profileImageContainer}>
-              {/* 使用主题化头像替换原来的头像 */}
-              <ThemedProfileIcon size={80} />
-            </View>
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={handleEditProfile} // 更新为实际的导航函数
-            >
-              <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
-            </TouchableOpacity>
+          {/* Edit Button - Positioned absolutely in top right */}
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={handleEditProfile}
+          >
+            <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
+          </TouchableOpacity>
+
+          {/* Centered Profile Image */}
+          <View style={styles.profileImageContainer}>
+            <ThemedProfileIcon size={80} />
           </View>
 
           <ThemedText style={styles.profileName}>{user.name}</ThemedText>
@@ -396,26 +331,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 20,
     marginBottom: 20,
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  profileImageContainer: {
-    alignItems: 'center',
+    position: 'relative',
   },
   editButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#45b7d1',
+    zIndex: 1,
   },
   editButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center', // Added this for better centering
+    width: '100%', // Ensure full width
+    marginTop: 20,
+    marginBottom: 16,
   },
   profileName: {
     fontSize: 24,
