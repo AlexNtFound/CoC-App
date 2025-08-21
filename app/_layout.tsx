@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -18,6 +19,13 @@ function RootLayoutNav() {
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="profile" 
+          options={{ 
+            headerShown: false,
+            presentation: 'modal' // 可选：使Profile以模态方式显示
+          }} 
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />

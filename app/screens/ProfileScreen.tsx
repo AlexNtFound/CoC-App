@@ -1,3 +1,4 @@
+// app/screens/ProfileScreen.tsx
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -9,6 +10,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Header from '../../components/Header';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -88,6 +90,26 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleLanguagePress = () => {
+    Alert.alert(
+      t('profile.language'),
+      t('profile.languageDesc'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: 'English', 
+          onPress: () => setLanguage('en'),
+          style: language === 'en' ? 'destructive' : 'default'
+        },
+        { 
+          text: '中文', 
+          onPress: () => setLanguage('zh'),
+          style: language === 'zh' ? 'destructive' : 'default'
+        }
+      ]
+    );
+  };
+
   const getThemeDisplayText = () => {
     switch (themeMode) {
       case 'light': return '☀️ Light';
@@ -95,6 +117,10 @@ export default function ProfileScreen() {
       case 'system': return '📱 System';
       default: return '📱 System';
     }
+  };
+
+  const getLanguageDisplayText = () => {
+    return language === 'en' ? 'English' : '中文';
   };
 
   const settingsSections = [
@@ -144,28 +170,10 @@ export default function ProfileScreen() {
         {
           id: 'language',
           title: t('profile.language'),
-          subtitle: t('profile.languageDesc'),
+          subtitle: `Current: ${getLanguageDisplayText()}`,
           type: 'navigation' as const,
           icon: '🌍',
-          action: () => {
-            Alert.alert(
-              t('profile.language'),
-              '',
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                { 
-                  text: 'English', 
-                  onPress: () => setLanguage('en'),
-                  style: language === 'en' ? 'destructive' : 'default'
-                },
-                { 
-                  text: '中文', 
-                  onPress: () => setLanguage('zh'),
-                  style: language === 'zh' ? 'destructive' : 'default'
-                }
-              ]
-            );
-          },
+          action: handleLanguagePress,
         },
       ],
     },
@@ -177,24 +185,24 @@ export default function ProfileScreen() {
           title: t('profile.editProfile'),
           subtitle: t('profile.editProfileDesc'),
           type: 'navigation' as const,
-          icon: '✏️',
-          action: () => Alert.alert(t('profile.editProfile'), t('profile.editProfile') + ' ' + t('profile.featureComingSoon')),
+          icon: '👤',
+          action: () => Alert.alert(t('profile.editProfile'), t('profile.featureComingSoon')),
         },
         {
           id: 'prayer-requests',
           title: t('profile.myPrayerRequests'),
           subtitle: t('profile.myPrayerRequestsDesc'),
           type: 'navigation' as const,
-          icon: '🕊️',
-          action: () => Alert.alert(t('profile.myPrayerRequests'), t('profile.myPrayerRequests') + ' ' + t('profile.featureComingSoon')),
+          icon: '🙏',
+          action: () => Alert.alert(t('profile.myPrayerRequests'), t('profile.featureComingSoon')),
         },
         {
-          id: 'bookmarks',
+          id: 'bookmarked-verses',
           title: t('profile.bookmarkedVerses'),
           subtitle: t('profile.bookmarkedVersesDesc'),
           type: 'navigation' as const,
           icon: '📖',
-          action: () => Alert.alert(t('profile.bookmarkedVerses'), t('profile.bookmarkedVerses') + ' ' + t('profile.featureComingSoon')),
+          action: () => Alert.alert(t('profile.bookmarkedVerses'), t('profile.featureComingSoon')),
         },
       ],
     },
@@ -202,20 +210,20 @@ export default function ProfileScreen() {
       title: t('profile.support'),
       items: [
         {
-          id: 'help',
+          id: 'help-support',
           title: t('profile.helpSupport'),
           subtitle: t('profile.helpSupportDesc'),
           type: 'navigation' as const,
           icon: '❓',
-          action: () => Alert.alert(t('profile.helpSupport'), t('profile.helpSupport') + ' ' + t('profile.featureComingSoon')),
+          action: () => Alert.alert(t('profile.helpSupport'), t('profile.featureComingSoon')),
         },
         {
-          id: 'feedback',
+          id: 'send-feedback',
           title: t('profile.sendFeedback'),
           subtitle: t('profile.sendFeedbackDesc'),
           type: 'navigation' as const,
           icon: '💬',
-          action: () => Alert.alert(t('profile.sendFeedback'), t('profile.sendFeedback') + ' ' + t('profile.featureComingSoon')),
+          action: () => Alert.alert(t('profile.sendFeedback'), t('profile.featureComingSoon')),
         },
         {
           id: 'about',
@@ -310,79 +318,83 @@ export default function ProfileScreen() {
   );
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor }]} 
-      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <ThemedView style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <ThemedText style={styles.headerTitle}>{t('profile.title')}</ThemedText>
-      </ThemedView>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
+      {/* Header with Back Button */}
+      <Header 
+        title={t('profile.title')} 
+        showBackButton={true}
+        showProfile={false}
+      />
+      
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Card */}
+        <View style={[styles.profileCard, { backgroundColor: cardBackground, borderColor }]}>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileImageContainer}>
+              <View style={styles.profileImagePlaceholder}>
+                <ThemedText style={styles.profileImageText}>
+                  {user.name.split(' ').map(n => n[0]).join('')}
+                </ThemedText>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => Alert.alert(t('profile.editProfile'), t('profile.editProfile') + ' ' + t('profile.featureComingSoon'))}
+            >
+              <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
+            </TouchableOpacity>
+          </View>
 
-      {/* Profile Card */}
-      <View style={[styles.profileCard, { backgroundColor: cardBackground, borderColor }]}>
-        <View style={styles.profileHeader}>
-          <View style={styles.profileImageContainer}>
-            <View style={styles.profileImagePlaceholder}>
-              <ThemedText style={styles.profileImageText}>
-                {user.name.split(' ').map(n => n[0]).join('')}
-              </ThemedText>
+          <ThemedText style={styles.profileName}>{user.name}</ThemedText>
+          <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
+
+          <View style={styles.profileDetails}>
+            <View style={styles.profileDetailRow}>
+              <ThemedText style={styles.profileDetailLabel}>{t('profile.campus')}</ThemedText>
+              <ThemedText style={styles.profileDetailValue}>{user.campus}</ThemedText>
+            </View>
+            <View style={styles.profileDetailRow}>
+              <ThemedText style={styles.profileDetailLabel}>{t('profile.year')}</ThemedText>
+              <ThemedText style={styles.profileDetailValue}>{user.year}</ThemedText>
+            </View>
+            <View style={styles.profileDetailRow}>
+              <ThemedText style={styles.profileDetailLabel}>{t('profile.joined')}</ThemedText>
+              <ThemedText style={styles.profileDetailValue}>{user.joinDate}</ThemedText>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={() => Alert.alert(t('profile.editProfile'), t('profile.editProfile') + ' ' + t('profile.featureComingSoon'))}
-          >
-            <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
-          </TouchableOpacity>
         </View>
 
-        <ThemedText style={styles.profileName}>{user.name}</ThemedText>
-        <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
+        {/* Stats Card */}
+        {renderStatsCard()}
 
-        <View style={styles.profileDetails}>
-          <View style={styles.profileDetailRow}>
-            <ThemedText style={styles.profileDetailLabel}>{t('profile.campus')}</ThemedText>
-            <ThemedText style={styles.profileDetailValue}>{user.campus}</ThemedText>
+        {/* Settings Sections */}
+        {settingsSections.map((section) => (
+          <View key={section.title} style={styles.settingsSection}>
+            <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
+            <View style={[styles.settingsCard, { backgroundColor: cardBackground, borderColor }]}>
+              {section.items.map((item, index) => (
+                <View key={item.id}>
+                  {renderSettingsItem(item)}
+                  {index < section.items.length - 1 && (
+                    <View style={[styles.settingsDivider, { borderBottomColor: borderColor }]} />
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
-          <View style={styles.profileDetailRow}>
-            <ThemedText style={styles.profileDetailLabel}>{t('profile.year')}</ThemedText>
-            <ThemedText style={styles.profileDetailValue}>{user.year}</ThemedText>
-          </View>
-          <View style={styles.profileDetailRow}>
-            <ThemedText style={styles.profileDetailLabel}>{t('profile.joined')}</ThemedText>
-            <ThemedText style={styles.profileDetailValue}>{user.joinDate}</ThemedText>
-          </View>
+        ))}
+
+        {/* Version Info */}
+        <View style={styles.versionInfo}>
+          <ThemedText style={styles.versionText}>{t('profile.version')}</ThemedText>
+          <ThemedText style={styles.versionSubtext}>{t('profile.madeWith')}</ThemedText>
         </View>
-      </View>
-
-      {/* Stats Card */}
-      {renderStatsCard()}
-
-      {/* Settings Sections */}
-      {settingsSections.map((section) => (
-        <View key={section.title} style={styles.settingsSection}>
-          <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
-          <View style={[styles.settingsCard, { backgroundColor: cardBackground, borderColor }]}>
-            {section.items.map((item, index) => (
-              <View key={item.id}>
-                {renderSettingsItem(item)}
-                {index < section.items.length - 1 && (
-                  <View style={[styles.settingsDivider, { borderBottomColor: borderColor }]} />
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
-      ))}
-
-      {/* Version Info */}
-      <View style={styles.versionInfo}>
-        <ThemedText style={styles.versionText}>{t('profile.version')}</ThemedText>
-        <ThemedText style={styles.versionSubtext}>{t('profile.madeWith')}</ThemedText>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -390,17 +402,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flex: 1,
+  },
   contentContainer: {
     paddingHorizontal: 20,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    lineHeight: 34,
-    paddingTop: 5,
+    paddingTop: 20,
   },
   profileCard: {
     borderRadius: 16,
@@ -459,21 +466,21 @@ const styles = StyleSheet.create({
   profileDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: 4,
   },
   profileDetailLabel: {
     fontSize: 14,
-    opacity: 0.7,
+    fontWeight: '500',
   },
   profileDetailValue: {
     fontSize: 14,
-    fontWeight: '500',
+    opacity: 0.7,
   },
   statsCard: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   statsTitle: {
     fontSize: 18,
@@ -506,18 +513,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    marginLeft: 4,
-    opacity: 0.8,
+    opacity: 0.7,
   },
   settingsCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
   },
   settingsItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
   },
   settingsItemLeft: {
@@ -526,8 +532,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingsIcon: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
@@ -546,17 +552,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   settingsItemSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     opacity: 0.6,
   },
   settingsDivider: {
-    borderBottomWidth: 0.5,
-    marginLeft: 64,
+    borderBottomWidth: 1,
+    marginLeft: 60,
+    opacity: 0.1,
   },
   chevron: {
     fontSize: 18,
-    opacity: 0.4,
-    marginLeft: 8,
+    opacity: 0.3,
+    fontWeight: 'bold',
   },
   versionInfo: {
     alignItems: 'center',
@@ -564,7 +571,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    opacity: 0.5,
+    opacity: 0.6,
     marginBottom: 4,
   },
   versionSubtext: {

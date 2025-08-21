@@ -1,16 +1,18 @@
+// app/screens/EventsScreen.tsx
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Header from '../../components/Header';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -89,36 +91,36 @@ export default function EventsScreen() {
       {
         id: '2',
         title: 'Fellowship Dinner',
-        description: 'Come hungry! We\'re hosting a potluck dinner where everyone brings a dish to share. Great opportunity to meet new people and strengthen friendships.',
+        description: 'Monthly fellowship dinner where we share food, stories, and build deeper relationships. Come hungry for both food and fellowship!',
         date: '2025-08-23',
         time: '6:30 PM',
-        location: 'Student Center Room 205',
-        organizer: 'Events Team',
+        location: 'Campus Cafeteria Room 205',
+        organizer: 'Fellowship Team',
         category: 'fellowship',
-        attendeeCount: 28,
-        maxAttendees: 40,
+        attendeeCount: 32,
+        maxAttendees: 50,
         isRSVPed: false,
       },
       {
         id: '3',
         title: 'Worship Night',
-        description: 'An evening of praise and worship with live music, testimonies, and prayer. Come as you are and experience God\'s presence with us.',
+        description: 'Special worship service with guest speaker Dr. Sarah Johnson. An evening of praise, worship, and powerful teaching about God\'s love.',
         date: '2025-08-25',
-        time: '8:00 PM',
-        location: 'Chapel',
+        time: '7:30 PM',
+        location: 'Main Auditorium',
         organizer: 'Worship Team',
         category: 'worship',
-        attendeeCount: 45,
-        maxAttendees: 80,
+        attendeeCount: 89,
+        maxAttendees: 200,
         isRSVPed: true,
       },
       {
         id: '4',
-        title: 'Community Outreach',
-        description: 'Join us as we serve the local community by volunteering at the food bank. Help pack meals and distribute groceries to families in need.',
+        title: 'Campus Outreach',
+        description: 'Join us as we share the Gospel around campus. We\'ll be distributing free coffee and Bibles while engaging in conversations with students.',
         date: '2025-08-27',
-        time: '9:00 AM',
-        location: 'Downtown Food Bank',
+        time: '10:00 AM',
+        location: 'Campus Library Plaza',
         organizer: 'Outreach Ministry',
         category: 'outreach',
         attendeeCount: 12,
@@ -128,7 +130,7 @@ export default function EventsScreen() {
       {
         id: '5',
         title: 'Prayer Meeting',
-        description: 'Come together for a time of corporate prayer. We\'ll pray for our campus, our nation, and personal requests. All are welcome.',
+        description: 'Weekly prayer meeting for our campus ministry. We\'ll pray for our campus, our nation, and personal requests. All are welcome.',
         date: '2025-08-29',
         time: '7:30 PM',
         location: 'Student Center Room 103',
@@ -357,7 +359,6 @@ export default function EventsScreen() {
             </ThemedText>
           </TouchableOpacity>
         )}
-        contentContainerStyle={styles.categoryList}
       />
     </ThemedView>
   );
@@ -371,18 +372,20 @@ export default function EventsScreen() {
     >
       {selectedEvent && (
         <ThemedView style={[styles.modalContainer, { backgroundColor }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
-            <TouchableOpacity onPress={() => setShowEventModal(false)}>
-              <ThemedText style={styles.modalCloseButton}>✕</ThemedText>
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>{t('events.eventDetails')}</ThemedText>
+            <TouchableOpacity 
+              onPress={() => setShowEventModal(false)}
+              style={styles.closeButton}
+            >
+              <ThemedText style={styles.closeButtonText}>×</ThemedText>
             </TouchableOpacity>
-            <ThemedText style={styles.modalTitle}>Event Details</ThemedText>
-            <View style={{ width: 30 }} />
           </View>
 
           <View style={styles.modalContent}>
             <View style={styles.modalEventHeader}>
               <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(selectedEvent.category) }]} />
-              <ThemedText style={styles.modalCategoryText}>
+              <ThemedText style={styles.modalCategory}>
                 {getCategoryIcon(selectedEvent.category)} {categories.find(c => c.key === selectedEvent.category)?.label}
               </ThemedText>
             </View>
@@ -392,25 +395,25 @@ export default function EventsScreen() {
 
             <View style={styles.modalEventDetails}>
               <View style={styles.modalDetailRow}>
-                <ThemedText style={styles.modalDetailLabel}>📅 Date:</ThemedText>
+                <ThemedText style={styles.modalDetailLabel}>{t('events.date')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>{formatDate(selectedEvent.date)}</ThemedText>
               </View>
               <View style={styles.modalDetailRow}>
-                <ThemedText style={styles.modalDetailLabel}>🕐 Time:</ThemedText>
+                <ThemedText style={styles.modalDetailLabel}>{t('events.time')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>{selectedEvent.time}</ThemedText>
               </View>
               <View style={styles.modalDetailRow}>
-                <ThemedText style={styles.modalDetailLabel}>📍 Location:</ThemedText>
+                <ThemedText style={styles.modalDetailLabel}>{t('events.location')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>{selectedEvent.location}</ThemedText>
               </View>
               <View style={styles.modalDetailRow}>
-                <ThemedText style={styles.modalDetailLabel}>👨‍💼 Organizer:</ThemedText>
+                <ThemedText style={styles.modalDetailLabel}>{t('events.organizer')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>{selectedEvent.organizer}</ThemedText>
               </View>
               <View style={styles.modalDetailRow}>
-                <ThemedText style={styles.modalDetailLabel}>👥 Attendees:</ThemedText>
+                <ThemedText style={styles.modalDetailLabel}>{t('events.attendees')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>
-                  {selectedEvent.attendeeCount}{selectedEvent.maxAttendees ? `/${selectedEvent.maxAttendees}` : ''} people
+                  {selectedEvent.attendeeCount}{selectedEvent.maxAttendees ? `/${selectedEvent.maxAttendees}` : ''} {t('events.people')}
                 </ThemedText>
               </View>
             </View>
@@ -427,15 +430,15 @@ export default function EventsScreen() {
                 }}
               >
                 <ThemedText style={styles.modalRSVPButtonText}>
-                  {selectedEvent.isRSVPed ? 'Cancel RSVP' : 'RSVP for this Event'}
+                  {selectedEvent.isRSVPed ? t('events.cancelRsvp') : t('events.rsvpForEvent')}
                 </ThemedText>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalShareButton, { borderColor }]}
-                onPress={() => Alert.alert('Share', 'Share feature coming soon!')}
+                onPress={() => Alert.alert(t('events.shareEvent'), t('events.shareFeature'))}
               >
-                <ThemedText style={styles.modalShareButtonText}>📤 Share Event</ThemedText>
+                <ThemedText style={styles.modalShareButtonText}>{t('events.shareEvent')}</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -445,12 +448,20 @@ export default function EventsScreen() {
   );
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor, paddingTop: insets.top }]}>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
       {/* Header */}
-      <ThemedView style={styles.header}>
-        <ThemedText style={styles.headerTitle}>{t('events.title')}</ThemedText>
-        <TouchableOpacity onPress={() => Alert.alert(t('events.add'), t('events.addEventFeature'))}>
-          <ThemedText style={styles.addButton}>{t('events.add')}</ThemedText>
+      <Header
+        showBackButton={true}
+        title={t('events.title')}
+      />
+
+      {/* Add Event Button */}
+      <ThemedView style={styles.headerActions}>
+        <TouchableOpacity 
+          style={styles.addEventButton}
+          onPress={() => Alert.alert(t('events.add'), t('events.addEventFeature'))}
+        >
+          <ThemedText style={styles.addEventButtonText}>{t('events.add')}</ThemedText>
         </TouchableOpacity>
       </ThemedView>
 
@@ -481,12 +492,13 @@ export default function EventsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <ThemedView style={styles.emptyContainer}>
-            <ThemedText style={styles.emptyText}>No events found</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Try adjusting your filters</ThemedText>
+            <ThemedText style={styles.emptyText}>{t('events.noEvents')}</ThemedText>
+            <ThemedText style={styles.emptySubtext}>{t('events.adjustFilters')}</ThemedText>
           </ThemedView>
         }
       />
 
+      {/* Event Detail Modal */}
       {renderEventModal()}
     </ThemedView>
   );
@@ -496,59 +508,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 10,
+  headerActions: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    alignItems: 'flex-end',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    lineHeight: 34,
-    paddingTop: 5,
+  addEventButton: {
+    backgroundColor: '#45b7d1',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  addButton: {
-    fontSize: 16,
-    color: '#45b7d1',
+  addEventButtonText: {
+    color: 'white',
     fontWeight: '600',
+    fontSize: 14,
   },
   searchContainer: {
     paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingBottom: 10,
   },
   searchInput: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
   },
-  categoryList: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
   categoryContainer: {
-    marginBottom: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 10,
+    paddingLeft: 20,
   },
   categoryButton: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 36,
+    marginRight: 10,
   },
   categoryButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '500',
   },
   eventsList: {
     flex: 1,
@@ -669,6 +669,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.4,
   },
+  // Modal Styles
   modalContainer: {
     flex: 1,
   },
@@ -678,17 +679,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-  },
-  modalCloseButton: {
-    fontSize: 18,
-    color: '#45b7d1',
-    width: 30,
+    borderBottomColor: '#e0e0e0',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  closeButtonText: {
+    fontSize: 24,
+    opacity: 0.6,
   },
   modalContent: {
     flex: 1,
@@ -697,9 +699,9 @@ const styles = StyleSheet.create({
   modalEventHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  modalCategoryText: {
+  modalCategory: {
     fontSize: 14,
     opacity: 0.7,
     fontWeight: '500',
@@ -722,25 +724,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e0e0e0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   modalDetailLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
-    flex: 1,
   },
   modalDetailValue: {
-    fontSize: 14,
-    opacity: 0.8,
-    flex: 1,
-    textAlign: 'right',
+    fontSize: 16,
+    opacity: 0.7,
   },
   modalActions: {
     gap: 12,
   },
   modalRSVPButton: {
-    padding: 16,
+    paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -750,13 +749,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modalShareButton: {
-    padding: 16,
+    paddingVertical: 16,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
   },
   modalShareButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

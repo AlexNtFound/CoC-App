@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Header from '../../components/Header';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -70,8 +71,8 @@ export default function HomeScreen() {
         id: '3',
         title: 'Urgent: Event Location Changed',
         content: 'This Friday\'s fellowship dinner has been moved to Room 205 due to maintenance in the original location.',
-        author: 'Events Team',
-        date: '2025-08-20',
+        author: 'Event Team',
+        date: '2025-08-17',
         type: 'urgent'
       }
     ]);
@@ -79,58 +80,38 @@ export default function HomeScreen() {
     setUpcomingEvents([
       {
         id: '1',
-        title: 'Bible Study',
+        title: 'Bible Study - Romans',
         date: '2025-08-22',
         time: '7:00 PM',
         location: 'Student Center Room 101',
-        description: 'Weekly Bible study focusing on Romans'
+        description: 'Weekly Bible study focusing on the book of Romans'
       },
       {
         id: '2',
-        title: 'Small Group Dinner',
+        title: 'Fellowship Dinner',
         date: '2025-08-23',
         time: '6:30 PM',
-        location: 'Student Center Room 205',
-        description: 'Community dinner and fellowship time'
+        location: 'Campus Cafeteria Room 205',
+        description: 'Monthly fellowship dinner for all members'
       },
       {
         id: '3',
-        title: 'Prayer Meeting',
+        title: 'Worship Night',
         date: '2025-08-25',
-        time: '8:00 PM',
-        location: 'Chapel',
-        description: 'Evening of worship and praise'
+        time: '7:30 PM',
+        location: 'Main Auditorium',
+        description: 'Special worship service with guest speaker'
       }
     ]);
   };
 
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = () => {
     setRefreshing(true);
     // Simulate API call
     setTimeout(() => {
       loadMockData();
       setRefreshing(false);
     }, 1000);
-  }, []);
-
-  const getAnnouncementColor = (type: string) => {
-    switch (type) {
-      case 'urgent':
-        return '#ff6b6b';
-      case 'prayer':
-        return '#4ecdc4';
-      default:
-        return '#45b7d1';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
   };
 
   const handleAnnouncementPress = (announcement: Announcement) => {
@@ -138,113 +119,128 @@ export default function HomeScreen() {
   };
 
   const handleEventPress = (event: Event) => {
-    Alert.alert(
-      event.title,
-      `${event.description}\n\nWhen: ${formatDate(event.date)} at ${event.time}\nWhere: ${event.location}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'RSVP', onPress: () => Alert.alert('RSVP', 'Feature coming soon!') }
-      ]
-    );
+    Alert.alert(event.title, `${event.date} at ${event.time}\n${event.location}\n\n${event.description}`);
+  };
+
+  const getAnnouncementColor = (type: string) => {
+    switch (type) {
+      case 'urgent': return '#ff6b6b';
+      case 'prayer': return '#4ecdc4';
+      case 'general': return '#45b7d1';
+      default: return '#45b7d1';
+    }
+  };
+
+  const formatEventDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en', { month: 'short' });
+    return { day: day.toString(), month };
   };
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor }]}
-      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 100 }]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <ThemedView style={[styles.header, { paddingTop: insets.top + 50 }]}>
-        <ThemedText style={styles.headerTitle}>{t('home.title')}</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>{t('home.welcome')}</ThemedText>
-      </ThemedView>
-
-      {/* Announcements Section */}
-      <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>{t('home.announcements')}</ThemedText>
-        {announcements.map((announcement) => (
-          <TouchableOpacity 
-            key={announcement.id}
-            style={[
-              styles.announcementCard,
-              { backgroundColor: cardBackground, borderColor }
-            ]}
-            onPress={() => handleAnnouncementPress(announcement)}
-          >
-            <ThemedView 
-              style={[
-                styles.announcementType,
-                { backgroundColor: getAnnouncementColor(announcement.type) }
-              ]}
-            />
-            <ThemedView style={styles.announcementContent}>
-              <ThemedText style={styles.announcementTitle}>
-                {announcement.title}
-              </ThemedText>
-              <ThemedText style={styles.announcementText} numberOfLines={2}>
-                {announcement.content}
-              </ThemedText>
-              <ThemedView style={styles.announcementMeta}>
-                <ThemedText style={styles.metaText}>{t('home.by')} {announcement.author}</ThemedText>
-                <ThemedText style={styles.metaText}>{formatDate(announcement.date)}</ThemedText>
-              </ThemedView>
-            </ThemedView>
-          </TouchableOpacity>
-        ))}
-      </ThemedView>
-
-      {/* Upcoming Events Section */}
-      <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>{t('home.events')}</ThemedText>
-        {upcomingEvents.map((event) => (
-          <TouchableOpacity 
-            key={event.id}
-            style={[
-              styles.eventCard,
-              { backgroundColor: cardBackground, borderColor }
-            ]}
-            onPress={() => handleEventPress(event)}
-          >
-            <ThemedView style={styles.eventDate}>
-              <ThemedText style={styles.eventDateText}>
-                {new Date(event.date).getDate()}
-              </ThemedText>
-              <ThemedText style={styles.eventMonthText}>
-                {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
-              </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.eventDetails}>
-              <ThemedText style={styles.eventTitle}>{event.title}</ThemedText>
-              <ThemedText style={styles.eventTime}>{event.time}</ThemedText>
-              <ThemedText style={styles.eventLocation}>{event.location}</ThemedText>
-            </ThemedView>
-          </TouchableOpacity>
-        ))}
-      </ThemedView>
-
-      {/* Quick Actions */}
-      {/* <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>{t('home.quickActions')}</ThemedText>
-        <ThemedView style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/screens/BibleScreen')}
-          >
-            <ThemedText style={styles.actionButtonText}>{t('home.readBible')}</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => Alert.alert(t('home.prayerRequest'), t('profile.featureComingSoon'))}
-          >
-            <ThemedText style={styles.actionButtonText}>{t('home.prayerRequest')}</ThemedText>
-          </TouchableOpacity>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
+      {/* Header Component */}
+      <Header />
+      
+      <ScrollView 
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 100 }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Welcome Section */}
+        <ThemedView style={styles.welcomeSection}>
+          <ThemedText style={styles.welcomeText}>{t('home.welcome')}</ThemedText>
         </ThemedView>
-      </ThemedView> */}
-    </ScrollView>
+
+        {/* Announcements Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>{t('home.announcements')}</ThemedText>
+          {announcements.map((announcement) => (
+            <TouchableOpacity 
+              key={announcement.id}
+              style={[
+                styles.announcementCard,
+                { backgroundColor: cardBackground, borderColor }
+              ]}
+              onPress={() => handleAnnouncementPress(announcement)}
+            >
+              <ThemedView 
+                style={[
+                  styles.announcementType,
+                  { backgroundColor: getAnnouncementColor(announcement.type) }
+                ]}
+              />
+              <ThemedView style={styles.announcementContent}>
+                <ThemedText style={styles.announcementTitle}>
+                  {announcement.title}
+                </ThemedText>
+                <ThemedText style={styles.announcementText} numberOfLines={2}>
+                  {announcement.content}
+                </ThemedText>
+                <ThemedView style={styles.announcementMeta}>
+                  <ThemedText style={styles.metaText}>
+                    {t('home.by')} {announcement.author}
+                  </ThemedText>
+                  <ThemedText style={styles.metaText}>
+                    {announcement.date}
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+            </TouchableOpacity>
+          ))}
+        </ThemedView>
+
+        {/* Upcoming Events Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>{t('home.events')}</ThemedText>
+          {upcomingEvents.map((event) => {
+            const eventDate = formatEventDate(event.date);
+            return (
+              <TouchableOpacity 
+                key={event.id}
+                style={[
+                  styles.eventCard,
+                  { backgroundColor: cardBackground, borderColor }
+                ]}
+                onPress={() => handleEventPress(event)}
+              >
+                <ThemedView style={styles.eventDate}>
+                  <ThemedText style={styles.eventDateText}>{eventDate.day}</ThemedText>
+                  <ThemedText style={styles.eventMonthText}>{eventDate.month}</ThemedText>
+                </ThemedView>
+                <ThemedView style={styles.eventDetails}>
+                  <ThemedText style={styles.eventTitle}>{event.title}</ThemedText>
+                  <ThemedText style={styles.eventTime}>{event.time}</ThemedText>
+                  <ThemedText style={styles.eventLocation}>{event.location}</ThemedText>
+                </ThemedView>
+              </TouchableOpacity>
+            );
+          })}
+        </ThemedView>
+
+        {/* Quick Actions */}
+        {/* <ThemedView style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>{t('home.quickActions')}</ThemedText>
+          <ThemedView style={styles.quickActions}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/screens/BibleScreen')}
+            >
+              <ThemedText style={styles.actionButtonText}>{t('home.readBible')}</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => Alert.alert(t('home.prayerRequest'), t('profile.featureComingSoon'))}
+            >
+              <ThemedText style={styles.actionButtonText}>{t('home.prayerRequest')}</ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+        </ThemedView> */}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -255,19 +251,13 @@ const styles = StyleSheet.create({
   contentContainer: {
     flexGrow: 1,
   },
-  header: {
+  welcomeSection: {
     padding: 20,
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    lineHeight: 34,
-    paddingTop: 5,
-  },
-  headerSubtitle: {
+  welcomeText: {
     fontSize: 16,
     opacity: 0.7,
-    marginTop: 4,
   },
   section: {
     marginBottom: 24,

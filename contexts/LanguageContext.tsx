@@ -133,7 +133,7 @@ const translations = {
       cancel: 'Cancel',
       signedOut: 'Signed Out',
       version: 'Christians on Campus v1.0.0',
-      madeWith: 'Made with ❤️ for campus ministry',
+      madeWith: 'Made with ❤️ for campus gospel ministry',
       featureComingSoon: 'feature coming soon!',
     },
     
@@ -293,7 +293,7 @@ const translations = {
       cancel: '取消',
       signedOut: '已退出登录',
       version: '校园基督徒 v1.0.0',
-      madeWith: '为校园事工社区用心打造 ❤️',
+      madeWith: '在爱里为校园福音工作打造 ❤️',
       featureComingSoon: '功能即将推出！',
     },
     
