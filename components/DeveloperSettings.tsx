@@ -1,7 +1,8 @@
-// CoC-App/components/DeveloperSettings.tsx (Updated)
+// CoC-App/components/DeveloperSettings.tsx (Fixed async version)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useInviteCode } from '../contexts/InviteCodeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import type { UserRole } from '../contexts/UserRoleContext';
@@ -19,6 +20,7 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
   const { t } = useLanguage();
   const { themeMode } = useTheme();
   const { userRole, updateUserRole } = useUserRole();
+  const { currentSession, logout } = useInviteCode();
   const [isExpanded, setIsExpanded] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
@@ -57,6 +59,65 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     );
   };
 
+  // 🔥 FIXED: Direct role change with proper async handling
+  const handleDirectRoleChange = (targetRole: UserRole) => {
+    console.log('🔧 Direct role change initiated:', targetRole);
+    
+    Alert.alert(
+      '🔧 Direct Role Change',
+      `Change role directly to ${targetRole}?\n\nThis will bypass invite code system and update UserRoleContext directly.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change Role',
+          onPress: async () => {
+            try {
+              console.log('🔧 Before role change:', userRole);
+              
+              // Clear invite code session first
+              if (currentSession.isAuthenticated) {
+                console.log('🔧 Logging out from invite code session...');
+                await logout();
+              }
+              
+              // 🔥 FIXED: Await the async updateUserRole function
+              console.log('🔧 Calling updateUserRole with:', targetRole);
+              await updateUserRole(targetRole);
+              
+              // Wait a moment then check storage and state
+              setTimeout(async () => {
+                try {
+                  const storedRole = await AsyncStorage.getItem('user_role');
+                  console.log('🔧 Role in storage after update:', storedRole);
+                  console.log('🔧 Current userRole state:', userRole);
+                  
+                  Alert.alert(
+                    'Role Change Complete',
+                    `✅ Success!\n\n` +
+                    `Target: ${targetRole}\n` +
+                    `Stored: ${storedRole}\n` +
+                    `State: ${userRole.role}\n` +
+                    `Can Create Events: ${userRole.permissions.canCreateEvents}\n\n` +
+                    `Check console for detailed logs.`
+                  );
+                } catch (error) {
+                  console.error('🔧 Error in verification:', error);
+                }
+              }, 1000); // Wait 1 second for state updates
+              
+            } catch (error) {
+              console.error('🔧 Error in direct role change:', error);
+              Alert.alert(
+                'Error', 
+                `Failed to change role: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleRoleChange = () => {
     const roles: { role: UserRole; label: string; description: string }[] = [
       { role: 'student', label: '👤 Student', description: 'Can view and RSVP to events' },
@@ -71,14 +132,7 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
         { text: 'Cancel', style: 'cancel' },
         ...roles.map(({ role, label, description }) => ({
           text: `${label}\n${description}`,
-          onPress: () => {
-            updateUserRole(role);
-            Alert.alert(
-              'Role Changed',
-              `You are now a ${label.split(' ')[1]}. The app UI will update to reflect your new permissions.`,
-              [{ text: 'OK' }]
-            );
-          }
+          onPress: () => handleDirectRoleChange(role)
         }))
       ]
     );
@@ -117,11 +171,16 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
       
       let info = 'Current AsyncStorage data:\n\n';
       stores.forEach(([key, value]) => {
-        // Truncate long values for readability
-        const displayValue = value && value.length > 100 
-          ? value.substring(0, 100) + '...' 
-          : value;
-        info += `${key}: ${displayValue}\n\n`;
+        // Show full value for role-related keys
+        if (key.includes('role') || key.includes('session') || key.includes('invite')) {
+          info += `${key}: ${value}\n\n`;
+        } else {
+          // Truncate long values for readability
+          const displayValue = value && value.length > 100 
+            ? value.substring(0, 100) + '...' 
+            : value;
+          info += `${key}: ${displayValue}\n\n`;
+        }
       });
       
       Alert.alert('Storage Info', info || 'No data found');
@@ -142,7 +201,97 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     }
   };
 
+  // 🔥 Enhanced role sync check
+  const checkRoleSync = async () => {
+    const userRoleContextRole = userRole.role;
+    const inviteCodeContextRole = currentSession.role;
+    const isAuthenticated = currentSession.isAuthenticated;
+    
+    // Check storage
+    const storedRole = await AsyncStorage.getItem('user_role');
+    const storedSession = await AsyncStorage.getItem('current_user_session');
+    
+    const syncStatus = userRoleContextRole === inviteCodeContextRole ? '✅ SYNCED' : '❌ OUT OF SYNC';
+    
+    console.log('🔧 Full role sync check:', {
+      userRoleContextRole,
+      inviteCodeContextRole,
+      isAuthenticated,
+      storedRole,
+      storedSession: storedSession ? JSON.parse(storedSession) : null,
+      permissions: userRole.permissions
+    });
+    
+    Alert.alert(
+      '🔄 Detailed Role Sync Status',
+      `UserRoleContext: ${getRoleDisplayText()}\n` +
+      `InviteCodeContext: ${inviteCodeContextRole}\n` +
+      `Authenticated: ${isAuthenticated ? 'Yes' : 'No'}\n\n` +
+      `Storage:\n` +
+      `• Stored Role: ${storedRole || 'null'}\n` +
+      `• Can Create Events: ${userRole.permissions.canCreateEvents}\n` +
+      `• Is Admin: ${userRole.role === 'admin'}\n\n` +
+      `Status: ${syncStatus}\n\n` +
+      `Check console for full debug info.`
+    );
+  };
+
+  // 🔥 FIXED: Test UserRole context with proper async handling
+  const testUserRoleContext = () => {
+    Alert.alert(
+      '🧪 Test UserRole Context',
+      'This will test the UserRole context directly by cycling through roles.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Run Test',
+          onPress: async () => {
+            const roles: UserRole[] = ['student', 'core_member', 'admin'];
+            
+            try {
+              for (let i = 0; i < roles.length; i++) {
+                const role = roles[i];
+                console.log(`🧪 Testing role: ${role}`);
+                
+                // 🔥 FIXED: Await the async function
+                await updateUserRole(role);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                
+                const storedRole = await AsyncStorage.getItem('user_role');
+                console.log(`🧪 After setting ${role}:`, {
+                  stateRole: userRole.role,
+                  canCreateEvents: userRole.permissions.canCreateEvents,
+                  storedRole
+                });
+              }
+              
+              Alert.alert(
+                'Test Complete', 
+                `✅ Test finished!\n\nFinal role should be admin.\nCurrent state: ${userRole.role}\nCan create events: ${userRole.permissions.canCreateEvents}\n\nCheck console for detailed results.`
+              );
+            } catch (error) {
+              console.error('🧪 Test failed:', error);
+              Alert.alert('Test Failed', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const developerActions = [
+    {
+      id: 'check-role-sync',
+      title: '🔄 Check Role Sync',
+      subtitle: `UserRole: ${getRoleDisplayText()} | Auth: ${currentSession.isAuthenticated ? 'Yes' : 'No'}`,
+      action: checkRoleSync,
+    },
+    {
+      id: 'test-user-role',
+      title: '🧪 Test UserRole Context',
+      subtitle: 'Test role changes directly',
+      action: testUserRoleContext,
+    },
     {
       id: 'change-role',
       title: '🎭 Change User Role',
@@ -222,7 +371,22 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
               Can Create Events: {userRole.permissions.canCreateEvents ? 'Yes' : 'No'}
             </ThemedText>
             <ThemedText style={styles.infoText}>
+              🔐 Authenticated: {currentSession.isAuthenticated ? 'Yes' : 'No'}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              🎫 Invite Code Role: {currentSession.role}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
               Build Mode: {__DEV__ ? 'Development' : 'Production'}
+            </ThemedText>
+            <ThemedText style={[
+              styles.infoText, 
+              { 
+                color: userRole.role === currentSession.role ? '#27ae60' : '#e74c3c',
+                fontWeight: 'bold' 
+              }
+            ]}>
+              Role Sync: {userRole.role === currentSession.role ? '✅ SYNCED' : '❌ OUT OF SYNC'}
             </ThemedText>
           </View>
         </View>

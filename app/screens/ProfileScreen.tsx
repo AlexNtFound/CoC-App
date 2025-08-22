@@ -46,7 +46,7 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useLanguage();
   const { user } = useUser();
   const { themeMode, setThemeMode, isDark } = useTheme();
-  const { userRole } = useUserRole();
+  const { userRole, updateUserRole } = useUserRole(); // 🔥 CRITICAL: Get updateUserRole function
   const { currentSession, activateInviteCode, logout } = useInviteCode();
   
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
@@ -87,11 +87,16 @@ export default function ProfileScreen() {
     setIsActivatingCode(true);
   
     try {
-      await activateInviteCode(inviteCodeForm.code.trim(), {
-        name: inviteCodeForm.name.trim(),
-        campus: inviteCodeForm.campus.trim(),
-        email: inviteCodeForm.email.trim() || undefined,
-      });
+      // 🔥 CRITICAL FIX: Pass updateUserRole function to activateInviteCode
+      await activateInviteCode(
+        inviteCodeForm.code.trim(), 
+        {
+          name: inviteCodeForm.name.trim(),
+          campus: inviteCodeForm.campus.trim(),
+          email: inviteCodeForm.email.trim() || undefined,
+        },
+        updateUserRole // This will update the UserRoleContext
+      );
   
       Alert.alert(
         'Success!',
@@ -225,7 +230,7 @@ export default function ProfileScreen() {
               
               <View style={styles.formField}>
                 <ThemedText style={styles.fieldLabel}>Invite Code *</ThemedText>
-                                 <TextInput
+                <TextInput
                    style={[
                      styles.textInput,
                      { borderColor, color: textColor, backgroundColor }
@@ -252,7 +257,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.name}
-                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, name: text }))}
+                  onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, name: text }))}
                   placeholder="Enter your full name"
                   placeholderTextColor={borderColor}
                   maxLength={50}
@@ -267,7 +272,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.campus}
-                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, campus: text }))}
+                  onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, campus: text }))}
                   placeholder="Enter your university"
                   placeholderTextColor={borderColor}
                   maxLength={100}
@@ -282,7 +287,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.email}
-                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, email: text }))}
+                  onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, email: text }))}
                   placeholder="Enter your email"
                   placeholderTextColor={borderColor}
                   keyboardType="email-address"
@@ -472,6 +477,8 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await logout();
+              // 🔥 CRITICAL FIX: Await the async updateUserRole function
+              await updateUserRole('student');
               Alert.alert('Signed Out', 'You have been signed out successfully.');
             } catch (error) {
               Alert.alert('Error', 'Failed to sign out. Please try again.');

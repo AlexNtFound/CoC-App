@@ -1,4 +1,4 @@
-// CoC-App/app/_layout.tsx - 恢复原始版本，保持初始设置界面
+// CoC-App/app/_layout.tsx - Fixed with role synchronization and debugging
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -13,9 +13,24 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { UserProvider } from '../contexts/UserContext';
 import { UserRoleProvider } from '../contexts/UserRoleContext';
+import { useRoleSync } from '../hooks/useRoleSync';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Component that handles role sync - must be inside all providers
+function RoleSyncHandler() {
+  const syncStatus = useRoleSync();
+  
+  // Log sync status in development
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🔄 Role Sync Status:', syncStatus);
+    }
+  }, [syncStatus]);
+
+  return null; // This component doesn't render anything
+}
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
@@ -51,6 +66,9 @@ function RootLayoutNav() {
 
   return (
     <>
+      {/* 🔥 CRITICAL: Role sync handler must be inside all providers */}
+      <RoleSyncHandler />
+      
       <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -1,4 +1,4 @@
-// CoC-App/contexts/InviteCodeContext.tsx - Expo兼容版本
+// CoC-App/contexts/InviteCodeContext.tsx - Fixed version with proper role integration
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -51,7 +51,7 @@ interface InviteCodeContextType {
   unbindDevice: (code: string) => Promise<void>;
   
   // 用户认证
-  activateInviteCode: (code: string, userInfo: { name: string; campus: string; email?: string }) => Promise<boolean>;
+  activateInviteCode: (code: string, userInfo: { name: string; campus: string; email?: string }, updateUserRole?: (role: UserRole) => void) => Promise<boolean>;
   logout: () => Promise<void>;
   
   // 设备验证
@@ -228,7 +228,8 @@ export const InviteCodeProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const activateInviteCode = async (
     code: string, 
-    userInfo: { name: string; campus: string; email?: string }
+    userInfo: { name: string; campus: string; email?: string },
+    updateUserRole?: (role: UserRole) => void
   ): Promise<boolean> => {
     try {
       const codeData = inviteCodes.find(c => c.code === code);
@@ -272,6 +273,11 @@ export const InviteCodeProvider: React.FC<{ children: ReactNode }> = ({ children
         authenticatedAt: new Date().toISOString(),
       };
       await saveCurrentSession(newSession);
+
+      // 🔥 CRITICAL FIX: Update the UserRoleContext as well
+      if (updateUserRole) {
+        updateUserRole(codeData.role);
+      }
 
       return true;
     } catch (error) {
