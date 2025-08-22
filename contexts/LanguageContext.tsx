@@ -54,6 +54,17 @@ const translations = {
       searchFeature: 'Search feature coming soon!',
     },
     
+    theme: {
+      appearance: 'Appearance',
+      followSystem: 'Follow System Theme',
+      followSystemDesc: 'Automatically match your device settings',
+      light: 'Light Theme',
+      lightDesc: 'Use light appearance',
+      dark: 'Dark Theme', 
+      darkDesc: 'Use dark appearance',
+      system: 'System',
+    },
+    
     // Events Screen
     events: {
       title: 'Events',
@@ -142,6 +153,7 @@ const translations = {
     
     // Common
     common: {
+      current: 'Current',
       loading: 'Loading...',
       cancel: 'Cancel',
       ok: 'OK',
@@ -215,6 +227,17 @@ const translations = {
       bookmarkFeature: '书签功能即将推出！',
       shareFeature: '分享功能即将推出！',
       searchFeature: '搜索功能即将推出！',
+    },
+
+    theme: {
+      appearance: '外观',
+      followSystem: '跟随系统主题',
+      followSystemDesc: '自动匹配您的设备设置',
+      light: '浅色主题',
+      lightDesc: '使用浅色外观',
+      dark: '深色主题',
+      darkDesc: '使用深色外观',
+      system: '系统',
     },
     
     // Events Screen
@@ -305,6 +328,7 @@ const translations = {
     
     // Common
     common: {
+      current: '当前',
       loading: '加载中...',
       cancel: '取消',
       ok: '确定',

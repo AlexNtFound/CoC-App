@@ -24,10 +24,11 @@ interface SettingsItem {
   id: string;
   title: string;
   subtitle: string;
-  type: 'toggle' | 'navigation' | 'action';
+  type: 'toggle' | 'navigation' | 'action' | 'theme-option';
   icon: string;
   value?: boolean;
   action?: () => void;
+  selected?: boolean;
 }
 
 interface SettingsSection {
@@ -39,19 +40,30 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { t, language, setLanguage } = useLanguage();
   const { user } = useUser();
-  const { isDark, toggleTheme } = useTheme();
+  const { themeMode, setThemeMode, isDark } = useTheme();
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({}, 'background');
   const borderColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
+  const accentColor = useThemeColor({}, 'tint');
 
   const handleEditProfile = () => {
     router.push('/profile-edit');
   };
 
-  const handleThemePress = () => {
-    toggleTheme();
+  const handleSystemThemeToggle = () => {
+    if (themeMode === 'system') {
+      // If currently system, switch to manual mode using current appearance
+      setThemeMode(isDark ? 'dark' : 'light');
+    } else {
+      // If currently manual, switch back to system
+      setThemeMode('system');
+    }
+  };
+
+  const handleManualThemeSelection = (mode: 'light' | 'dark') => {
+    setThemeMode(mode);
   };
 
   const handleLanguagePress = () => {
@@ -61,7 +73,7 @@ export default function ProfileScreen() {
       [
         { text: 'English', onPress: () => setLanguage('en') },
         { text: '中文', onPress: () => setLanguage('zh') },
-        { text: t('profile.cancel'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -70,23 +82,151 @@ export default function ProfileScreen() {
     return language === 'en' ? 'English' : '中文';
   };
 
+  const getThemeDisplayText = () => {
+    switch (themeMode) {
+      case 'system':
+        return t('theme.system');
+      case 'light':
+        return t('theme.light');
+      case 'dark':
+        return t('theme.dark');
+      default:
+        return t('theme.system');
+    }
+  };
+
+  const renderStatsCard = () => {
+    return (
+      <View style={[styles.statsCard, { backgroundColor: cardBackground, borderColor }]}>
+        <ThemedText style={styles.statsTitle}>{t('profile.myActivity')}</ThemedText>
+        <View style={styles.statsContent}>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>12</ThemedText>
+            <ThemedText style={styles.statLabel}>{t('profile.eventsAttended')}</ThemedText>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>8</ThemedText>
+            <ThemedText style={styles.statLabel}>{t('profile.studiesCompleted')}</ThemedText>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statNumber}>5</ThemedText>
+            <ThemedText style={styles.statLabel}>{t('profile.prayerRequests')}</ThemedText>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderThemeOption = (item: SettingsItem) => {
+    const isSelected = item.selected;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.themeOptionContainer,
+          isSelected && { backgroundColor: accentColor + '20', borderColor: accentColor }
+        ]}
+        onPress={item.action}
+      >
+        <View style={styles.themeOptionContent}>
+          <ThemedText style={styles.themeOptionIcon}>{item.icon}</ThemedText>
+          <View style={styles.themeOptionText}>
+            <ThemedText style={[styles.settingsItemTitle, isSelected && { color: accentColor }]}>
+              {item.title}
+            </ThemedText>
+            <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
+          </View>
+          {isSelected && (
+            <ThemedText style={[styles.checkmark, { color: accentColor }]}>✓</ThemedText>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderSettingsItem = (item: SettingsItem) => {
+    if (item.type === 'theme-option') {
+      return renderThemeOption(item);
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.settingsItemContainer}
+        onPress={item.action}
+        disabled={item.type === 'toggle'}
+      >
+        <View style={styles.settingsItemContent}>
+          <ThemedText style={styles.settingsItemIcon}>{item.icon}</ThemedText>
+          <View style={styles.settingsItemText}>
+            <ThemedText style={styles.settingsItemTitle}>{item.title}</ThemedText>
+            <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
+          </View>
+          {item.type === 'toggle' && (
+            <Switch
+              value={item.value}
+              onValueChange={item.action}
+              trackColor={{ false: borderColor, true: accentColor }}
+              thumbColor={item.value ? '#ffffff' : '#f4f3f4'}
+            />
+          )}
+          {item.type === 'navigation' && (
+            <ThemedText style={styles.chevron}>›</ThemedText>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Create theme-related settings
+  const themeItems: SettingsItem[] = [
+    {
+      id: 'system-theme',
+      title: t('theme.followSystem'),
+      subtitle: t('theme.followSystemDesc'),
+      type: 'toggle' as const,
+      icon: '📱',
+      value: themeMode === 'system',
+      action: handleSystemThemeToggle,
+    }
+  ];
+
+  // Add manual theme options if not following system
+  if (themeMode !== 'system') {
+    themeItems.push(
+      {
+        id: 'light-theme',
+        title: t('theme.light'),
+        subtitle: t('theme.lightDesc'),
+        type: 'theme-option' as const,
+        icon: '☀️',
+        selected: themeMode === 'light',
+        action: () => handleManualThemeSelection('light'),
+      },
+      {
+        id: 'dark-theme',
+        title: t('theme.dark'),
+        subtitle: t('theme.darkDesc'),
+        type: 'theme-option' as const,
+        icon: '🌙',
+        selected: themeMode === 'dark',
+        action: () => handleManualThemeSelection('dark'),
+      }
+    );
+  }
+
   const settingsSections: SettingsSection[] = [
+    {
+      title: t('theme.appearance'),
+      items: themeItems,
+    },
     {
       title: t('profile.preferences'),
       items: [
         {
-          id: 'theme',
-          title: t('profile.darkMode'),
-          subtitle: isDark ? t('profile.darkModeOn') : t('profile.darkModeOff'),
-          type: 'toggle' as const,
-          icon: isDark ? '🌙' : '☀️',
-          value: isDark,
-          action: handleThemePress,
-        },
-        {
           id: 'language',
           title: t('profile.language'),
-          subtitle: `Current: ${getLanguageDisplayText()}`,
+          subtitle: `${t('common.current')}: ${getLanguageDisplayText()}`,
           type: 'navigation' as const,
           icon: '🌍',
           action: handleLanguagePress,
@@ -165,12 +305,13 @@ export default function ProfileScreen() {
               t('profile.signOut'),
               t('profile.signOutConfirm'),
               [
-                { text: t('profile.cancel'), style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 { 
                   text: t('profile.signOut'), 
                   style: 'destructive',
                   onPress: () => {
-                    Alert.alert(t('profile.success'), t('profile.signOutSuccess'));
+                    // Implement sign out logic here
+                    Alert.alert(t('profile.signedOut'));
                   }
                 },
               ]
@@ -181,74 +322,17 @@ export default function ProfileScreen() {
     },
   ];
 
-  const renderSettingsItem = (item: SettingsItem) => (
-    <TouchableOpacity
-      key={item.id}
-      style={styles.settingsItem}
-      onPress={item.action}
-      activeOpacity={0.7}
-    >
-      <View style={styles.settingsItemLeft}>
-        <View style={styles.settingsIcon}>
-          <ThemedText style={styles.settingsIconText}>{item.icon}</ThemedText>
-        </View>
-        <View style={styles.settingsItemText}>
-          <ThemedText style={styles.settingsItemTitle}>{item.title}</ThemedText>
-          <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
-        </View>
-      </View>
-      
-      {item.type === 'toggle' && (
-        <Switch
-          value={item.value}
-          onValueChange={item.action}
-          trackColor={{ false: '#767577', true: '#45b7d1' }}
-          thumbColor={item.value ? '#ffffff' : '#ffffff'}
-        />
-      )}
-      
-      {item.type === 'navigation' && (
-        <ThemedText style={styles.chevron}>›</ThemedText>
-      )}
-      
-      {item.type === 'action' && item.id === 'logout' && (
-        <ThemedText style={[styles.chevron, { color: '#e74c3c' }]}>›</ThemedText>
-      )}
-    </TouchableOpacity>
-  );
-
-  const renderStatsCard = () => (
-    <View style={[styles.statsCard, { backgroundColor: cardBackground, borderColor }]}>
-      <ThemedText style={styles.statsTitle}>{t('profile.myActivity')}</ThemedText>
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statNumber}>{user.eventsAttended}</ThemedText>
-          <ThemedText style={styles.statLabel}>{t('profile.eventsAttended')}</ThemedText>
-        </View>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statNumber}>{user.studiesCompleted}</ThemedText>
-          <ThemedText style={styles.statLabel}>{t('profile.studiesCompleted')}</ThemedText>
-        </View>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statNumber}>{user.prayerRequestsSubmitted}</ThemedText>
-          <ThemedText style={styles.statLabel}>{t('profile.prayerRequests')}</ThemedText>
-        </View>
-      </View>
-    </View>
-  );
-
   return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
-      {/* Header with Back Button */}
+    <ThemedView style={[styles.container, { backgroundColor, paddingTop: insets.top }]}>
       <Header 
         title={t('profile.title')} 
-        showBackButton={true}
+        showBackButton={false}
         showProfile={false}
       />
       
       <ScrollView 
         style={styles.scrollContainer}
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
@@ -296,8 +380,12 @@ export default function ProfileScreen() {
               {section.items.map((item, index) => (
                 <View key={item.id}>
                   {renderSettingsItem(item)}
-                  {index < section.items.length - 1 && (
+                  {index < section.items.length - 1 && item.type !== 'theme-option' && (
                     <View style={[styles.settingsDivider, { borderBottomColor: borderColor }]} />
+                  )}
+                  {/* Add spacing between theme options */}
+                  {item.type === 'theme-option' && index < section.items.length - 1 && (
+                    <View style={styles.themeOptionSpacing} />
                   )}
                 </View>
               ))}
@@ -350,8 +438,8 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     alignItems: 'center',
-    justifyContent: 'center', // Added this for better centering
-    width: '100%', // Ensure full width
+    justifyContent: 'center',
+    width: '100%',
     marginTop: 20,
     marginBottom: 16,
   },
@@ -381,7 +469,7 @@ const styles = StyleSheet.create({
   },
   profileDetailValue: {
     fontSize: 14,
-    opacity: 0.7,
+    opacity: 0.8,
   },
   statsCard: {
     borderRadius: 16,
@@ -393,19 +481,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    textAlign: 'center',
   },
-  statsRow: {
+  statsContent: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#45b7d1',
     marginBottom: 4,
   },
   statLabel: {
@@ -413,42 +500,39 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
   },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 20,
+  },
   settingsSection: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 8,
-    opacity: 0.7,
+    marginBottom: 12,
+    marginLeft: 4,
   },
   settingsCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  settingsItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
+  settingsItemContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  settingsItemLeft: {
+  settingsItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  settingsIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  settingsItemIcon: {
+    fontSize: 20,
     marginRight: 12,
-  },
-  settingsIconText: {
-    fontSize: 16,
+    width: 24,
+    textAlign: 'center',
   },
   settingsItemText: {
     flex: 1,
@@ -459,30 +543,62 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   settingsItemSubtitle: {
-    fontSize: 13,
-    opacity: 0.6,
-  },
-  settingsDivider: {
-    borderBottomWidth: 1,
-    marginLeft: 60,
-    opacity: 0.1,
+    fontSize: 14,
+    opacity: 0.7,
   },
   chevron: {
     fontSize: 18,
-    opacity: 0.3,
+    opacity: 0.5,
+    marginLeft: 8,
+  },
+  settingsDivider: {
+    borderBottomWidth: 1,
+    marginHorizontal: 16,
+  },
+  // Theme option specific styles
+  themeOptionContainer: {
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  themeOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  themeOptionText: {
+    flex: 1,
+  },
+  themeOptionIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  themeOptionSpacing: {
+    height: 4,
+  },
+  checkmark: {
+    fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
   versionInfo: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 32,
+    paddingBottom: 40,
   },
   versionText: {
     fontSize: 14,
-    opacity: 0.6,
+    fontWeight: '600',
     marginBottom: 4,
+    opacity: 0.8,
   },
   versionSubtext: {
     fontSize: 12,
-    opacity: 0.4,
+    opacity: 0.6,
   },
 });
