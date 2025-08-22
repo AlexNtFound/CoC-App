@@ -1,6 +1,6 @@
-// app/screens/EventsScreen.tsx
+// CoC-App/app/screens/EventsScreen.tsx (Updated)
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -14,38 +14,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import type { EventData } from '../../contexts/EventContext';
+import { useEvents } from '../../contexts/EventContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useUser } from '../../contexts/UserContext';
+import { useUserRole } from '../../contexts/UserRoleContext';
 import { useThemeColor } from '../../hooks/useThemeColor';
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  organizer: string;
-  category: 'worship' | 'study' | 'fellowship' | 'blending' | 'prayer';
-  attendeeCount: number;
-  maxAttendees?: number;
-  isRSVPed: boolean;
-  imageUrl?: string;
-}
-
-interface EventFilter {
-  category: string;
-  timeRange: 'all' | 'today' | 'week' | 'month';
-}
 
 export default function EventsScreen() {
   const { t } = useLanguage();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const { user } = useUser();
+  const { canCreateEvents } = useUserRole();
+  const {
+    filteredEvents,
+    filter,
+    loading,
+    rsvpEvent,
+    cancelRsvp,
+    setFilter,
+    refreshEvents,
+    getUserRsvpStatus
+  } = useEvents();
+  
+  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<EventFilter>({ category: 'all', timeRange: 'all' });
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -63,158 +56,21 @@ export default function EventsScreen() {
     { key: 'prayer', label: t('events.prayer'), icon: '🕊️' },
   ];
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  useEffect(() => {
-    filterEvents();
-  }, [events, filter, searchQuery]);
-
-  const loadEvents = () => {
-    // Mock events data - replace with API call
-    const mockEvents: Event[] = [
-      {
-        id: '1',
-        title: 'Weekly Bible Study',
-        description: 'Join us for an in-depth study of the book of Romans. We\'ll explore themes of grace, faith, and righteousness. Perfect for both new believers and mature Christians.',
-        date: '2025-08-22',
-        time: '7:00 PM',
-        location: 'Student Center Room 101',
-        organizer: 'Pastor John',
-        category: 'study',
-        attendeeCount: 15,
-        maxAttendees: 25,
-        isRSVPed: true,
-      },
-      {
-        id: '2',
-        title: 'Fellowship Dinner',
-        description: 'Monthly fellowship dinner where we share food, stories, and build deeper relationships. Come hungry for both food and fellowship!',
-        date: '2025-08-23',
-        time: '6:30 PM',
-        location: 'Campus Cafeteria Room 205',
-        organizer: 'Fellowship Team',
-        category: 'fellowship',
-        attendeeCount: 50,
-        maxAttendees: 50,
-        isRSVPed: false,
-      },
-      {
-        id: '3',
-        title: 'Worship Night',
-        description: 'Special worship service with guest speaker Dr. Sarah Johnson. An evening of praise, worship, and powerful teaching about God\'s love.',
-        date: '2025-08-25',
-        time: '7:30 PM',
-        location: 'Main Auditorium',
-        organizer: 'Worship Team',
-        category: 'worship',
-        attendeeCount: 89,
-        maxAttendees: 200,
-        isRSVPed: true,
-      },
-      {
-        id: '4',
-        title: 'Campus Blending',
-        description: 'Join us as we share the Gospel around campus. We\'ll be distributing free coffee and Bibles while engaging in conversations with students.',
-        date: '2025-08-27',
-        time: '10:00 AM',
-        location: 'Campus Library Plaza',
-        organizer: 'Outreach Ministry',
-        category: 'blending',
-        attendeeCount: 20,
-        maxAttendees: 20,
-        isRSVPed: false,
-      },
-      {
-        id: '5',
-        title: 'Prayer Meeting',
-        description: 'Weekly prayer meeting for our campus ministry. We\'ll pray for our campus, our nation, and personal requests. All are welcome.',
-        date: '2025-08-29',
-        time: '7:30 PM',
-        location: 'Student Center Room 103',
-        organizer: 'Prayer Ministry',
-        category: 'prayer',
-        attendeeCount: 8,
-        isRSVPed: false,
-      },
-      {
-        id: '6',
-        title: 'Campus Revival Night',
-        description: 'Special guest speaker Dr. Sarah Johnson will be sharing about spiritual awakening on college campuses. Don\'t miss this powerful evening!',
-        date: '2025-09-01',
-        time: '7:00 PM',
-        location: 'Main Auditorium',
-        organizer: 'Leadership Team',
-        category: 'worship',
-        attendeeCount: 65,
-        maxAttendees: 200,
-        isRSVPed: false,
-      },
-    ];
-
-    setEvents(mockEvents);
-  };
-
-  const filterEvents = () => {
-    let filtered = [...events];
-
-    // Filter by category
-    if (filter.category !== 'all') {
-      filtered = filtered.filter(event => event.category === filter.category);
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(event => 
-        event.title.toLowerCase().includes(query) ||
-        event.description.toLowerCase().includes(query) ||
-        event.location.toLowerCase().includes(query)
-      );
-    }
-
-    // Filter by time range
-    const today = new Date();
-    if (filter.timeRange !== 'all') {
-      filtered = filtered.filter(event => {
-        const eventDate = new Date(event.date);
-        const timeDiff = eventDate.getTime() - today.getTime();
-        const daysDiff = timeDiff / (1000 * 3600 * 24);
-
-        switch (filter.timeRange) {
-          case 'today':
-            return daysDiff >= 0 && daysDiff < 1;
-          case 'week':
-            return daysDiff >= 0 && daysDiff <= 7;
-          case 'month':
-            return daysDiff >= 0 && daysDiff <= 30;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Sort by date
-    filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    setFilteredEvents(filtered);
-  };
-
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      loadEvents();
+    try {
+      await refreshEvents();
+    } finally {
       setRefreshing(false);
-    }, 1000);
-  }, []);
+    }
+  }, [refreshEvents]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'worship': return '#9b59b6';
       case 'study': return '#3498db';
       case 'fellowship': return '#e67e22';
-      case 'outreach': return '#e74c3c';
+      case 'blending': return '#e74c3c';
       case 'prayer': return '#1abc9c';
       default: return '#95a5a6';
     }
@@ -249,88 +105,235 @@ export default function EventsScreen() {
     return daysDiff >= 0 && daysDiff <= 3;
   };
 
-  const handleRSVP = (event: Event) => {
-    const updatedEvents = events.map(e => 
-      e.id === event.id 
-        ? { 
-            ...e, 
-            isRSVPed: !e.isRSVPed,
-            attendeeCount: e.isRSVPed ? e.attendeeCount - 1 : e.attendeeCount + 1
-          }
-        : e
-    );
-    setEvents(updatedEvents);
-
-    Alert.alert(
-      event.isRSVPed ? t('events.rsvpCancelled') : t('events.rsvpConfirmed'),
-      event.isRSVPed 
-        ? `${t('events.rsvpCancelledMessage')} "${event.title}"`
-        : `${t('events.rsvpConfirmedMessage')} "${event.title}"`
-    );
+  const getUserId = () => {
+    return user?.email || 'anonymous';
   };
 
-  const handleEventPress = (event: Event) => {
+  const handleRSVP = async (event: EventData) => {
+    const userId = getUserId();
+    const currentStatus = getUserRsvpStatus(event.id, userId);
+    
+    try {
+      if (currentStatus === 'not_registered') {
+        const success = await rsvpEvent(event.id, userId);
+        if (success) {
+          const newStatus = getUserRsvpStatus(event.id, userId);
+          if (newStatus === 'waiting_list') {
+            const position = event.waitingList.indexOf(userId) + 1;
+            Alert.alert(
+              '🎫 Added to Queue',
+              `The event is full, but you're #${position} in the queue. You'll be automatically registered if someone cancels!`,
+              [{ text: 'Got it!' }]
+            );
+          } else {
+            Alert.alert(
+              '✅ Registration Confirmed',
+              `You're registered for "${event.title}"!`,
+              [{ text: 'Great!' }]
+            );
+          }
+        }
+      } else {
+        // Show confirmation for cancellation
+        const confirmMessage = currentStatus === 'registered' 
+          ? `Cancel your registration for "${event.title}"?`
+          : `Remove yourself from the queue for "${event.title}"?`;
+          
+        Alert.alert(
+          'Confirm Cancellation',
+          confirmMessage,
+          [
+            { text: 'Keep Registration', style: 'cancel' },
+            { 
+              text: 'Yes, Cancel', 
+              style: 'destructive',
+              onPress: async () => {
+                await cancelRsvp(event.id, userId);
+                
+                if (currentStatus === 'registered') {
+                  Alert.alert(
+                    '❌ Registration Cancelled',
+                    `You've cancelled your registration for "${event.title}". If there's a queue, someone will be automatically registered.`
+                  );
+                } else {
+                  Alert.alert(
+                    '🚫 Removed from Queue',
+                    `You've been removed from the queue for "${event.title}".`
+                  );
+                }
+              }
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update registration. Please try again.');
+    }
+  };
+
+  const handleEventPress = (event: EventData) => {
     setSelectedEvent(event);
     setShowEventModal(true);
   };
 
-  const renderEvent = ({ item }: { item: Event }) => (
-    <TouchableOpacity
-      style={[styles.eventCard, { backgroundColor: cardBackground, borderColor }]}
-      onPress={() => handleEventPress(item)}
-    >
-      <View style={styles.eventHeader}>
-        <View style={styles.eventCategory}>
-          <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(item.category) }]} />
-          <ThemedText style={styles.categoryText}>
-            {getCategoryIcon(item.category)} {categories.find(c => c.key === item.category)?.label}
-          </ThemedText>
-        </View>
-        {isEventToday(item.date) && (
-          <View style={styles.todayBadge}>
-            <ThemedText style={styles.todayText}>{t('events.today')}</ThemedText>
+  const handleCreateEvent = () => {
+    if (!canCreateEvents) {
+      Alert.alert(
+        'Permission Required', 
+        'Only core members can create events. Please contact an administrator if you need to create events.'
+      );
+      return;
+    }
+    router.push('/create-event');
+  };
+
+  const getAttendeeCountText = (event: EventData) => {
+    const totalRegistered = event.attendees.length;
+    const waitingListCount = event.waitingList.length;
+    
+    if (event.maxAttendees) {
+      let text = `👥 ${totalRegistered}/${event.maxAttendees} attending`;
+      if (waitingListCount > 0) {
+        text += ` • ${waitingListCount} waiting`;
+      }
+      return text;
+    } else {
+      let text = `👥 ${totalRegistered} attending`;
+      if (waitingListCount > 0) {
+        text += ` • ${waitingListCount} waiting`;
+      }
+      return text;
+    }
+  };
+
+  const getRSVPButtonText = (event: EventData) => {
+    const userId = getUserId();
+    const status = getUserRsvpStatus(event.id, userId);
+    
+    switch (status) {
+      case 'registered':
+        return '✅ Registered';
+      case 'waiting_list':
+        const position = event.waitingList.indexOf(userId) + 1;
+        return `🎫 #${position} in Queue`;
+      case 'not_registered':
+      default:
+        if (event.maxAttendees && event.attendees.length >= event.maxAttendees) {
+          return '🎫 Join Queue';
+        }
+        return '📝 Register';
+    }
+  };
+
+  const getRSVPButtonColor = (event: EventData) => {
+    const userId = getUserId();
+    const status = getUserRsvpStatus(event.id, userId);
+    
+    switch (status) {
+      case 'registered':
+        return '#27ae60'; // Green - registered
+      case 'waiting_list':
+        return '#f39c12'; // Orange - waiting
+      case 'not_registered':
+      default:
+        if (event.maxAttendees && event.attendees.length >= event.maxAttendees) {
+          return '#3498db'; // Blue - join queue
+        }
+        return '#45b7d1'; // Default blue - register
+    }
+  };
+
+  const renderEvent = ({ item }: { item: EventData }) => {
+    const userId = getUserId();
+    const userStatus = getUserRsvpStatus(item.id, userId);
+    const isEventFull = item.maxAttendees && item.attendees.length >= item.maxAttendees;
+    
+    return (
+      <TouchableOpacity
+        style={[styles.eventCard, { backgroundColor: cardBackground, borderColor }]}
+        onPress={() => handleEventPress(item)}
+      >
+        <View style={styles.eventHeader}>
+          <View style={styles.eventCategory}>
+            <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(item.category) }]} />
+            <ThemedText style={styles.categoryText}>
+              {getCategoryIcon(item.category)} {categories.find(c => c.key === item.category)?.label}
+            </ThemedText>
           </View>
-        )}
-        {isEventSoon(item.date) && !isEventToday(item.date) && (
-          <View style={styles.soonBadge}>
-            <ThemedText style={styles.soonText}>{t('events.soon')}</ThemedText>
+          
+          {/* 状态标签组 */}
+          <View style={styles.statusBadges}>
+            {isEventToday(item.date) && (
+              <View style={styles.todayBadge}>
+                <ThemedText style={styles.todayText}>TODAY</ThemedText>
+              </View>
+            )}
+            
+            {isEventFull && (
+              <View style={styles.fullBadge}>
+                <ThemedText style={styles.fullText}>FULL</ThemedText>
+              </View>
+            )}
+            
+            {userStatus === 'registered' && (
+              <View style={styles.registeredBadge}>
+                <ThemedText style={styles.registeredText}>✓ REGISTERED</ThemedText>
+              </View>
+            )}
+            
+            {userStatus === 'waiting_list' && (
+              <View style={styles.waitingBadge}>
+                <ThemedText style={styles.waitingText}>
+                  #{item.waitingList.indexOf(userId) + 1} IN QUEUE
+                </ThemedText>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-
-      <ThemedText style={styles.eventTitle}>{item.title}</ThemedText>
-      <ThemedText style={styles.eventDescription} numberOfLines={2}>
-        {item.description}
-      </ThemedText>
-
-      <View style={styles.eventDetails}>
-        <View style={styles.eventMeta}>
-          <ThemedText style={styles.eventDate}>📅 {formatDate(item.date)}</ThemedText>
-          <ThemedText style={styles.eventTime}>🕐 {item.time}</ThemedText>
-          <ThemedText style={styles.eventLocation}>📍 {item.location}</ThemedText>
         </View>
-      </View>
-
-      <View style={styles.eventFooter}>
-        <View style={styles.attendeeInfo}>
-          <ThemedText style={styles.attendeeCount}>
-            👥 {item.attendeeCount}{item.maxAttendees ? `/${item.maxAttendees}` : ''} {t('events.attending')}
-          </ThemedText>
+  
+        <ThemedText style={styles.eventTitle}>{item.title}</ThemedText>
+        <ThemedText style={styles.eventDescription} numberOfLines={2}>
+          {item.description}
+        </ThemedText>
+  
+        <View style={styles.eventDetails}>
+          <View style={styles.eventMeta}>
+            <ThemedText style={styles.eventDate}>📅 {formatDate(item.date)}</ThemedText>
+            <ThemedText style={styles.eventTime}>🕐 {item.time}</ThemedText>
+            <ThemedText style={styles.eventLocation}>📍 {item.location}</ThemedText>
+            <ThemedText style={styles.eventOrganizer}>👤 {item.organizer}</ThemedText>
+          </View>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.rsvpButton,
-            { backgroundColor: item.isRSVPed ? '#e74c3c' : '#27ae60' }
-          ]}
-          onPress={() => handleRSVP(item)}
-        >
-          <ThemedText style={styles.rsvpButtonText}>
-            {item.isRSVPed ? t('events.cancelRsvp') : t('events.rsvp')}
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  
+        <View style={styles.eventFooter}>
+          <View style={styles.attendeeInfo}>
+            <ThemedText style={styles.attendeeCount}>
+              {getAttendeeCountText(item)}
+            </ThemedText>
+            
+            {/* 候补列表提示 */}
+            {item.waitingList.length > 0 && userStatus !== 'waiting_list' && (
+              <ThemedText style={styles.queueHint}>
+                Queue: {item.waitingList.length} people waiting
+              </ThemedText>
+            )}
+          </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.rsvpButton,
+              { backgroundColor: getRSVPButtonColor(item) }
+            ]}
+            onPress={() => handleRSVP(item)}
+          >
+            <ThemedText style={styles.rsvpButtonText}>
+              {getRSVPButtonText(item)}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderCategoryFilter = () => (
     <ThemedView style={[styles.categoryContainer, { backgroundColor: cardBackground }]}>
@@ -412,8 +415,18 @@ export default function EventsScreen() {
               <View style={styles.modalDetailRow}>
                 <ThemedText style={styles.modalDetailLabel}>{t('events.attendees')}</ThemedText>
                 <ThemedText style={styles.modalDetailValue}>
-                  {selectedEvent.attendeeCount}{selectedEvent.maxAttendees ? `/${selectedEvent.maxAttendees}` : ''} {t('events.people')}
+                  {getAttendeeCountText(selectedEvent)}
                 </ThemedText>
+              </View>
+              {selectedEvent.requirements && (
+                <View style={styles.modalDetailRow}>
+                  <ThemedText style={styles.modalDetailLabel}>Requirements:</ThemedText>
+                  <ThemedText style={styles.modalDetailValue}>{selectedEvent.requirements}</ThemedText>
+                </View>
+              )}
+              <View style={styles.modalDetailRow}>
+                <ThemedText style={styles.modalDetailLabel}>Contact:</ThemedText>
+                <ThemedText style={styles.modalDetailValue}>{selectedEvent.contactInfo}</ThemedText>
               </View>
             </View>
 
@@ -421,7 +434,7 @@ export default function EventsScreen() {
               <TouchableOpacity
                 style={[
                   styles.modalRSVPButton,
-                  { backgroundColor: selectedEvent.isRSVPed ? '#e74c3c' : '#27ae60' }
+                  { backgroundColor: getRSVPButtonColor(selectedEvent) }
                 ]}
                 onPress={() => {
                   handleRSVP(selectedEvent);
@@ -429,7 +442,7 @@ export default function EventsScreen() {
                 }}
               >
                 <ThemedText style={styles.modalRSVPButtonText}>
-                  {selectedEvent.isRSVPed ? t('events.cancelRsvp') : t('events.rsvpForEvent')}
+                  {getRSVPButtonText(selectedEvent)}
                 </ThemedText>
               </TouchableOpacity>
 
@@ -454,26 +467,17 @@ export default function EventsScreen() {
         title={t('events.title')}
       />
 
-      {/* Add Event Button */}
-      {/* <ThemedView style={styles.headerActions}>
-        <TouchableOpacity 
-          style={styles.addEventButton}
-          onPress={() => Alert.alert(t('events.add'), t('events.addEventFeature'))}
-        >
-          <ThemedText style={styles.addEventButtonText}>{t('events.add')}</ThemedText>
-        </TouchableOpacity>
-      </ThemedView> */}
-
-      {/* Search Bar */}
-      {/* <ThemedView style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, { borderColor, color: textColor }]}
-          placeholder={t('events.searchEvents')}
-          placeholderTextColor={borderColor}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </ThemedView> */}
+      {/* Add Event Button - Only show for core members */}
+      {canCreateEvents && (
+        <ThemedView style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.addEventButton}
+            onPress={handleCreateEvent}
+          >
+            <ThemedText style={styles.addEventButtonText}>{t('events.add')}</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      )}
 
       {/* Category Filter */}
       {renderCategoryFilter()}
@@ -493,6 +497,16 @@ export default function EventsScreen() {
           <ThemedView style={styles.emptyContainer}>
             <ThemedText style={styles.emptyText}>{t('events.noEvents')}</ThemedText>
             <ThemedText style={styles.emptySubtext}>{t('events.adjustFilters')}</ThemedText>
+            {canCreateEvents && (
+              <TouchableOpacity 
+                style={[styles.createFirstEventButton, { borderColor }]}
+                onPress={handleCreateEvent}
+              >
+                <ThemedText style={[styles.createFirstEventText, { color: textColor }]}>
+                  Create First Event
+                </ThemedText>
+              </TouchableOpacity>
+            )}
           </ThemedView>
         }
       />
@@ -522,17 +536,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
   },
   categoryContainer: {
     paddingVertical: 10,
@@ -631,6 +634,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     opacity: 0.7,
   },
+  eventOrganizer: {
+    fontSize: 13,
+    opacity: 0.7,
+  },
   eventFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -667,6 +674,17 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     opacity: 0.4,
+    marginBottom: 20,
+  },
+  createFirstEventButton: {
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  createFirstEventText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   // Modal Styles
   modalContainer: {
@@ -729,10 +747,13 @@ const styles = StyleSheet.create({
   modalDetailLabel: {
     fontSize: 16,
     fontWeight: '500',
+    flex: 1,
   },
   modalDetailValue: {
     fontSize: 16,
     opacity: 0.7,
+    flex: 2,
+    textAlign: 'right',
   },
   modalActions: {
     gap: 12,
@@ -756,5 +777,48 @@ const styles = StyleSheet.create({
   modalShareButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  statusBadges: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  fullBadge: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  fullText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  registeredBadge: {
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  registeredText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  waitingBadge: {
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  waitingText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  queueHint: {
+    fontSize: 11,
+    opacity: 0.6,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 });

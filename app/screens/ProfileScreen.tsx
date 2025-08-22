@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,10 +17,12 @@ import Header from '../../components/Header';
 import ThemedProfileIcon from '../../components/ThemedProfileIcon';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import { useInviteCode } from '../../contexts/InviteCodeContext';
 import type { Language } from '../../contexts/LanguageContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
+import { useUserRole, type UserRole } from '../../contexts/UserRoleContext';
 import { useThemeColor } from '../../hooks/useThemeColor';
 
 interface SettingsItem {
@@ -43,8 +46,18 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useLanguage();
   const { user } = useUser();
   const { themeMode, setThemeMode, isDark } = useTheme();
+  const { userRole } = useUserRole();
+  const { currentSession, activateInviteCode, logout } = useInviteCode();
   
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
+  const [showInviteCodeInput, setShowInviteCodeInput] = useState(false);
+  const [inviteCodeForm, setInviteCodeForm] = useState({
+    code: '',
+    name: user?.name || '',
+    campus: 'University of California',
+    email: user?.email || '',
+  });
+  const [isActivatingCode, setIsActivatingCode] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({}, 'background');
@@ -58,6 +71,276 @@ export default function ProfileScreen() {
 
   const handleEditProfile = () => {
     router.push('/profile-edit');
+  };
+  
+  const handleActivateInviteCode = async () => {
+    if (!inviteCodeForm.code.trim()) {
+      Alert.alert('Validation Error', 'Please enter an invite code.');
+      return;
+    }
+  
+    if (!inviteCodeForm.name.trim()) {
+      Alert.alert('Validation Error', 'Please enter your name.');
+      return;
+    }
+  
+    setIsActivatingCode(true);
+  
+    try {
+      await activateInviteCode(inviteCodeForm.code.trim(), {
+        name: inviteCodeForm.name.trim(),
+        campus: inviteCodeForm.campus.trim(),
+        email: inviteCodeForm.email.trim() || undefined,
+      });
+  
+      Alert.alert(
+        'Success!',
+        'Your invite code has been activated successfully. You now have enhanced permissions!',
+        [{ text: 'Great!', onPress: () => setShowInviteCodeInput(false) }]
+      );
+  
+      // Reset form
+      setInviteCodeForm({
+        code: '',
+        name: user?.name || '',
+        campus: 'University of California',
+        email: user?.email || '',
+      });
+    } catch (error) {
+      Alert.alert(
+        'Activation Failed',
+        error instanceof Error ? error.message : 'Failed to activate invite code. Please try again.'
+      );
+    } finally {
+      setIsActivatingCode(false);
+    }
+  };
+
+  // 格式化邀请码输入
+  const formatInviteCode = (input: string): string => {
+    const cleaned = input.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    
+    if (cleaned.length <= 2) {
+      return cleaned;
+    }
+    
+    const segments = [];
+    let remaining = cleaned;
+    
+    if (remaining.length >= 2) {
+      segments.push(remaining.substr(0, 2));
+      remaining = remaining.substr(2);
+    }
+    
+    if (segments.length > 0 && remaining.length > 0) {
+      segments[0] += '-';
+    }
+    
+    while (remaining.length > 0) {
+      const segment = remaining.substr(0, 4);
+      segments.push(segment);
+      remaining = remaining.substr(4);
+      
+      if (remaining.length > 0) {
+        segments[segments.length - 1] += '-';
+      }
+    }
+    
+    return segments.join('');
+  };
+  
+  // 渲染邀请码激活部分
+  const renderInviteCodeSection = () => {
+    if (currentSession.isAuthenticated) {
+      // 已认证用户显示当前状态
+      return (
+        <View style={styles.settingsSection}>
+          <ThemedText style={styles.sectionTitle}>Account Status</ThemedText>
+          <View style={[styles.sectionContent, { backgroundColor: cardBackground, borderColor }]}>
+            <View style={styles.settingsItem}>
+              <View style={styles.settingsItemContent}>
+                <ThemedText style={styles.settingsItemIcon}>🔐</ThemedText>
+                <View style={styles.settingsItemText}>
+                  <ThemedText style={styles.settingsItemTitle}>Authenticated</ThemedText>
+                  <ThemedText style={styles.settingsItemSubtitle}>
+                    Role: {getRoleIcon(userRole.role)} {getRoleDisplayName(userRole.role)}
+                  </ThemedText>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: '#27ae60' }]}>
+                  <ThemedText style={styles.statusBadgeText}>✓ ACTIVE</ThemedText>
+                </View>
+              </View>
+            </View>
+            
+            <View style={[styles.separator, { backgroundColor: borderColor }]} />
+            
+            <TouchableOpacity style={styles.settingsItem} onPress={handleSignOut}>
+              <View style={styles.settingsItemContent}>
+                <ThemedText style={styles.settingsItemIcon}>🚪</ThemedText>
+                <View style={styles.settingsItemText}>
+                  <ThemedText style={styles.settingsItemTitle}>Sign Out</ThemedText>
+                  <ThemedText style={styles.settingsItemSubtitle}>
+                    Clear authentication and role permissions
+                  </ThemedText>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+  
+    // 未认证用户显示激活选项
+    return (
+      <View style={styles.settingsSection}>
+        <ThemedText style={styles.sectionTitle}>Account Enhancement</ThemedText>
+        <View style={[styles.sectionContent, { backgroundColor: cardBackground, borderColor }]}>
+          <TouchableOpacity 
+            style={styles.settingsItem}
+            onPress={() => setShowInviteCodeInput(!showInviteCodeInput)}
+          >
+            <View style={styles.settingsItemContent}>
+              <ThemedText style={styles.settingsItemIcon}>🎫</ThemedText>
+              <View style={styles.settingsItemText}>
+                <ThemedText style={styles.settingsItemTitle}>Activate Invite Code</ThemedText>
+                <ThemedText style={styles.settingsItemSubtitle}>
+                  Get core member or admin permissions
+                </ThemedText>
+              </View>
+              <ThemedText style={[
+                styles.chevron, 
+                { 
+                  transform: [{ rotate: showInviteCodeInput ? '90deg' : '0deg' }] 
+                }
+              ]}>
+                ›
+              </ThemedText>
+            </View>
+          </TouchableOpacity>
+  
+          {showInviteCodeInput && (
+            <View style={styles.inviteCodeForm}>
+              <View style={[styles.separator, { backgroundColor: borderColor }]} />
+              
+              <View style={styles.formField}>
+                <ThemedText style={styles.fieldLabel}>Invite Code *</ThemedText>
+                <TextInput
+                  style={[
+                    styles.inviteCodeInput,
+                    { borderColor, color: textColor, backgroundColor }
+                  ]}
+                  value={inviteCodeForm.code}
+                  onChangeText={(text) => setInviteCodeForm(prev => ({ 
+                    ...prev, 
+                    code: formatInviteCode(text) 
+                  }))}
+                  placeholder="AD-2025-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+                  placeholderTextColor={borderColor}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={44}
+                />
+              </View>
+  
+              <View style={styles.formField}>
+                <ThemedText style={styles.fieldLabel}>Your Name *</ThemedText>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { borderColor, color: textColor, backgroundColor }
+                  ]}
+                  value={inviteCodeForm.name}
+                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, name: text }))}
+                  placeholder="Enter your full name"
+                  placeholderTextColor={borderColor}
+                  maxLength={50}
+                />
+              </View>
+  
+              <View style={styles.formField}>
+                <ThemedText style={styles.fieldLabel}>Campus/University *</ThemedText>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { borderColor, color: textColor, backgroundColor }
+                  ]}
+                  value={inviteCodeForm.campus}
+                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, campus: text }))}
+                  placeholder="Enter your university"
+                  placeholderTextColor={borderColor}
+                  maxLength={100}
+                />
+              </View>
+  
+              <View style={styles.formField}>
+                <ThemedText style={styles.fieldLabel}>Email (Optional)</ThemedText>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { borderColor, color: textColor, backgroundColor }
+                  ]}
+                  value={inviteCodeForm.email}
+                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, email: text }))}
+                  placeholder="Enter your email"
+                  placeholderTextColor={borderColor}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  maxLength={100}
+                />
+              </View>
+  
+              <View style={styles.formActions}>
+                <TouchableOpacity
+                  style={[styles.formButton, styles.cancelButton, { borderColor }]}
+                  onPress={() => setShowInviteCodeInput(false)}
+                  disabled={isActivatingCode}
+                >
+                  <ThemedText style={[styles.formButtonText, { color: textColor }]}>
+                    Cancel
+                  </ThemedText>
+                </TouchableOpacity>
+  
+                <TouchableOpacity
+                  style={[
+                    styles.formButton, 
+                    styles.activateButton,
+                    { 
+                      backgroundColor: accentColor,
+                      opacity: isActivatingCode ? 0.6 : 1 
+                    }
+                  ]}
+                  onPress={handleActivateInviteCode}
+                  disabled={isActivatingCode}
+                >
+                  <ThemedText style={styles.activateButtonText}>
+                    {isActivatingCode ? 'Activating...' : 'Activate Code'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+  
+  // 添加辅助函数
+  const getRoleDisplayName = (role: UserRole): string => {
+    switch (role) {
+      case 'admin': return 'Administrator';
+      case 'core_member': return 'Core Member';
+      case 'student': return 'Student';
+      default: return role;
+    }
+  };
+  
+  const getRoleIcon = (role: UserRole): string => {
+    switch (role) {
+      case 'admin': return '👑';
+      case 'core_member': return '⭐';
+      case 'student': return '👤';
+      default: return '👤';
+    }
   };
 
   const handleSystemThemeToggle = () => {
@@ -136,6 +419,68 @@ export default function ProfileScreen() {
     }
   };
 
+  // 更新用户信息显示部分：
+  const renderUserProfile = () => {
+    // 使用邀请码系统的用户信息
+    const displayUser = currentSession.userInfo || {
+      name: 'Guest User',
+      campus: 'Unknown Campus',
+      email: undefined,
+    };
+
+    return (
+      <View style={[styles.profileHeader, { backgroundColor: cardBackground, borderColor }]}>
+        <ThemedProfileIcon size={80} />
+        <View style={styles.profileInfo}>
+          <ThemedText style={styles.userName}>{displayUser.name}</ThemedText>
+          <ThemedText style={styles.userDetails}>
+            🎓 {displayUser.campus}
+          </ThemedText>
+          <ThemedText style={styles.userDetails}>
+            {getRoleIcon(userRole.role)} {getRoleDisplayName(userRole.role)}
+          </ThemedText>
+          {currentSession.authenticatedAt && (
+            <ThemedText style={styles.userDetails}>
+              📅 Joined: {new Date(currentSession.authenticatedAt).toLocaleDateString()}
+            </ThemedText>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={[styles.editButton, { borderColor: accentColor }]}
+          onPress={handleEditProfile}
+        >
+          <ThemedText style={[styles.editButtonText, { color: accentColor }]}>
+            {t('profile.edit')}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // 添加登出处理函数：
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? You will lose your current role permissions.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              Alert.alert('Signed Out', 'You have been signed out successfully.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  // 更新renderStatsCard函数以使用真实的用户数据：
   const renderStatsCard = () => {
     return (
       <View style={[styles.statsCard, { backgroundColor: cardBackground, borderColor }]}>
@@ -155,6 +500,18 @@ export default function ProfileScreen() {
             <ThemedText style={styles.statNumber}>5</ThemedText>
             <ThemedText style={styles.statLabel}>{t('profile.prayerRequests')}</ThemedText>
           </View>
+        </View>
+        
+        {/* 添加认证状态显示 */}
+        <View style={styles.authStatus}>
+          <ThemedText style={styles.authStatusText}>
+            🔐 Authenticated • Role: {getRoleIcon(userRole.role)} {getRoleDisplayName(userRole.role)}
+          </ThemedText>
+          {currentSession.inviteCode && (
+            <ThemedText style={styles.inviteCodeHint}>
+              Code: {currentSession.inviteCode.substring(0, 8)}...
+            </ThemedText>
+          )}
         </View>
       </View>
     );
@@ -385,65 +742,91 @@ export default function ProfileScreen() {
         },
       ],
     },
-    {
-      title: t('profile.support'),
-      items: [
-        {
-          id: 'help-support',
-          title: t('profile.helpSupport'),
-          subtitle: t('profile.helpSupportDesc'),
-          type: 'navigation' as const,
-          icon: '❓',
-          action: handleHelpSupportPress,
-        },
-        // {
-        //   id: 'send-feedback',
-        //   title: t('profile.sendFeedback'),
-        //   subtitle: t('profile.sendFeedbackDesc'),
-        //   type: 'navigation' as const,
-        //   icon: '💬',
-        //   action: () => Alert.alert(t('profile.sendFeedback'), t('profile.featureComingSoon')),
-        // },
-        {
-          id: 'about',
-          title: t('profile.about'),
-          subtitle: t('profile.aboutDesc'),
-          type: 'navigation' as const,
-          icon: 'ℹ️',
-          action: () => Alert.alert(t('profile.about'), t('profile.version') + '\n\n' + t('profile.madeWith')),
-        },
-      ],
-    },
-    // {
-    //   title: t('profile.accountActions'),
-    //   items: [
-    //     {
-    //       id: 'logout',
-    //       title: t('profile.signOut'),
-    //       subtitle: t('profile.signOutDesc'),
-    //       type: 'action' as const,
-    //       icon: '🚪',
-    //       action: () => {
-    //         Alert.alert(
-    //           t('profile.signOut'),
-    //           t('profile.signOutConfirm'),
-    //           [
-    //             { text: t('common.cancel'), style: 'cancel' },
-    //             { 
-    //               text: t('profile.signOut'), 
-    //               style: 'destructive',
-    //               onPress: () => {
-    //                 // Implement sign out logic here
-    //                 Alert.alert(t('profile.signedOut'));
-    //               }
-    //             },
-    //           ]
-    //         );
-    //       },
-    //     },
-    //   ],
-    // },
-  ];
+    // 新增：管理员功能部分
+  // 管理员功能部分 - 更新为包含邀请码管理
+  ...(userRole.role === 'admin' ? [{
+    title: 'Administration',
+    items: [
+      {
+        id: 'invite-code-management',
+        title: '🎫 Invite Code Management',
+        subtitle: 'Generate and manage invite codes',
+        type: 'navigation' as const,
+        icon: '🔑',
+        action: () => router.push('/invite-code-management'),
+      },
+      // {
+      //   id: 'user-management',
+      //   title: '👥 User Management',
+      //   subtitle: 'View and manage users (Legacy)',
+      //   type: 'navigation' as const,
+      //   icon: '⚙️',
+      //   action: () => router.push('/user-management'),
+      // },
+      {
+        id: 'system-analytics',
+        title: '📊 System Analytics',
+        subtitle: 'View app usage and statistics',
+        type: 'navigation' as const,
+        icon: '📈',
+        action: () => Alert.alert('System Analytics', 'Analytics feature coming soon!'),
+      },
+    ],
+  }] : []),
+  {
+    title: t('profile.support'),
+    items: [
+      {
+        id: 'help-support',
+        title: t('profile.helpSupport'),
+        subtitle: t('profile.helpSupportDesc'),
+        type: 'navigation' as const,
+        icon: '❓',
+        action: handleHelpSupportPress,
+      },
+      {
+        id: 'about',
+        title: t('profile.about'),
+        subtitle: t('profile.aboutDesc'),
+        type: 'navigation' as const,
+        icon: 'ℹ️',
+        action: () => Alert.alert(t('profile.about'), t('profile.version') + '\n\n' + t('profile.madeWith')),
+      },
+    ],
+  },
+  // 账户操作部分
+  {
+    title: 'Account Actions',
+    items: [
+      // {
+      //   id: 'device-info',
+      //   title: '📱 Device Information',
+      //   subtitle: 'View current device binding',
+      //   type: 'navigation' as const,
+      //   icon: '🔒',
+      //   action: () => {
+      //     if (currentSession.deviceFingerprint) {
+      //       Alert.alert(
+      //         'Device Information',
+      //         `Device: ${currentSession.deviceFingerprint.brand} ${currentSession.deviceFingerprint.model}\n` +
+      //         `System: ${currentSession.deviceFingerprint.systemVersion}\n` +
+      //         `Device ID: ${currentSession.deviceFingerprint.deviceId.substring(0, 8)}...`
+      //       );
+      //     }
+      //   },
+      // },
+      {
+        id: 'logout',
+        title: 'Sign Out',
+        subtitle: 'Sign out of your account',
+        type: 'action' as const,
+        icon: '🚪',
+        action: handleSignOut,
+      },
+    ],
+  },
+];
+
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
@@ -455,30 +838,8 @@ export default function ProfileScreen() {
       />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* User Profile Header */}
-        <View style={[styles.profileHeader, { backgroundColor: cardBackground, borderColor }]}>
-          <ThemedProfileIcon size={80} />
-          <View style={styles.profileInfo}>
-            <ThemedText style={styles.userName}>{user?.name || 'Guest User'}</ThemedText>
-            <ThemedText style={styles.userDetails}>
-              {t('profile.campus')} {user?.campus || 'Unknown Campus'}
-            </ThemedText>
-            <ThemedText style={styles.userDetails}>
-              {t('profile.year')} {user?.year || 'Unknown Year'}
-            </ThemedText>
-            <ThemedText style={styles.userDetails}>
-              {t('profile.joined')} {user?.joinDate || 'Unknown Date'}
-            </ThemedText>
-          </View>
-          <TouchableOpacity 
-            style={[styles.editButton, { borderColor: accentColor }]}
-            onPress={handleEditProfile}
-          >
-            <ThemedText style={[styles.editButtonText, { color: accentColor }]}>
-              {t('profile.edit')}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+        {/* 使用新的用户资料渲染函数 */}
+        {renderUserProfile()}
 
         {/* Activity Stats */}
         {renderStatsCard()}
@@ -499,6 +860,9 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
+      
+        {/* 邀请码激活部分 */}
+        {renderInviteCodeSection()}
         
         <DeveloperSettings />
 
@@ -687,5 +1051,89 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     marginLeft: 48,
+  },
+  authStatus: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  authStatusText: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+  inviteCodeHint: {
+    fontSize: 10,
+    opacity: 0.5,
+    textAlign: 'center',
+    marginTop: 2,
+    fontFamily: 'monospace',
+  },
+  inviteCodeForm: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  formField: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  inviteCodeInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  formButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  activateButton: {
+    // backgroundColor set dynamically
+  },
+  formButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  activateButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'white',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
   },
 });

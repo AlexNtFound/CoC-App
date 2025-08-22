@@ -1,4 +1,4 @@
-// CoC-App/app/_layout.tsx
+// CoC-App/app/_layout.tsx - 恢复原始版本，保持初始设置界面
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -7,9 +7,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 
 import InitialSetupScreen, { checkSetupComplete } from '../components/InitialSetupScreen';
+import { EventProvider } from '../contexts/EventContext';
+import { InviteCodeProvider } from '../contexts/InviteCodeContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { UserProvider } from '../contexts/UserContext';
+import { UserRoleProvider } from '../contexts/UserRoleContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -55,14 +58,35 @@ function RootLayoutNav() {
             name="profile" 
             options={{ 
               headerShown: false,
-              presentation: 'modal' // 可选：使Profile以模态方式显示
+              presentation: 'modal'
             }} 
           />
           <Stack.Screen 
             name="profile-edit" 
             options={{ 
               headerShown: false,
-              presentation: 'modal' // Profile Edit也以模态方式显示
+              presentation: 'modal'
+            }} 
+          />
+          <Stack.Screen 
+            name="create-event" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal'
+            }} 
+          />
+          <Stack.Screen 
+            name="user-management" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal'
+            }} 
+          />
+          <Stack.Screen 
+            name="invite-code-management" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal'
             }} 
           />
           <Stack.Screen name="+not-found" />
@@ -70,7 +94,7 @@ function RootLayoutNav() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </ThemeProvider>
 
-      {/* Initial Setup Modal */}
+      {/* 保持原有的初始设置界面 */}
       <InitialSetupScreen 
         visible={showInitialSetup}
         onComplete={handleSetupComplete}
@@ -98,7 +122,13 @@ export default function RootLayout() {
     <CustomThemeProvider>
       <LanguageProvider>
         <UserProvider>
-          <RootLayoutNav />
+          <InviteCodeProvider>
+            <UserRoleProvider>
+              <EventProvider>
+                <RootLayoutNav />
+              </EventProvider>
+            </UserRoleProvider>
+          </InviteCodeProvider>
         </UserProvider>
       </LanguageProvider>
     </CustomThemeProvider>

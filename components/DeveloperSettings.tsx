@@ -1,9 +1,11 @@
-// CoC-App/components/DeveloperSettings.tsx
+// CoC-App/components/DeveloperSettings.tsx (Updated)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import type { UserRole } from '../contexts/UserRoleContext';
+import { useUserRole } from '../contexts/UserRoleContext';
 import { useThemeColor } from '../hooks/useThemeColor';
 import { resetSetupForDevelopment } from './InitialSetupScreen';
 import { ThemedText } from './ThemedText';
@@ -16,6 +18,7 @@ interface DeveloperSettingsProps {
 export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettingsProps) {
   const { t } = useLanguage();
   const { themeMode } = useTheme();
+  const { userRole, updateUserRole } = useUserRole();
   const [isExpanded, setIsExpanded] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
@@ -54,10 +57,37 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     );
   };
 
+  const handleRoleChange = () => {
+    const roles: { role: UserRole; label: string; description: string }[] = [
+      { role: 'student', label: '👤 Student', description: 'Can view and RSVP to events' },
+      { role: 'core_member', label: '⭐ Core Member', description: 'Can create and manage events' },
+      { role: 'admin', label: '👑 Admin', description: 'Full access to all features' },
+    ];
+
+    Alert.alert(
+      '🔧 Change User Role',
+      'Select a role to test different permissions:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...roles.map(({ role, label, description }) => ({
+          text: `${label}\n${description}`,
+          onPress: () => {
+            updateUserRole(role);
+            Alert.alert(
+              'Role Changed',
+              `You are now a ${label.split(' ')[1]}. The app UI will update to reflect your new permissions.`,
+              [{ text: 'OK' }]
+            );
+          }
+        }))
+      ]
+    );
+  };
+
   const handleClearAllData = () => {
     Alert.alert(
       '⚠️ Developer Tool',
-      'Clear ALL app data? This will reset everything including theme, language, and setup status.',
+      'Clear ALL app data? This will reset everything including theme, language, events, and setup status.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -87,7 +117,11 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
       
       let info = 'Current AsyncStorage data:\n\n';
       stores.forEach(([key, value]) => {
-        info += `${key}: ${value}\n`;
+        // Truncate long values for readability
+        const displayValue = value && value.length > 100 
+          ? value.substring(0, 100) + '...' 
+          : value;
+        info += `${key}: ${displayValue}\n\n`;
       });
       
       Alert.alert('Storage Info', info || 'No data found');
@@ -96,7 +130,25 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     }
   };
 
+  const getRoleDisplayText = () => {
+    switch (userRole.role) {
+      case 'admin':
+        return '👑 Admin';
+      case 'core_member':
+        return '⭐ Core Member';
+      case 'student':
+      default:
+        return '👤 Student';
+    }
+  };
+
   const developerActions = [
+    {
+      id: 'change-role',
+      title: '🎭 Change User Role',
+      subtitle: `Current: ${getRoleDisplayText()}`,
+      action: handleRoleChange,
+    },
     {
       id: 'reset-setup',
       title: '🔄 Reset Initial Setup',
@@ -162,6 +214,12 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
           <View style={styles.info}>
             <ThemedText style={styles.infoText}>
               Current Theme: {themeMode}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              User Role: {getRoleDisplayText()}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              Can Create Events: {userRole.permissions.canCreateEvents ? 'Yes' : 'No'}
             </ThemedText>
             <ThemedText style={styles.infoText}>
               Build Mode: {__DEV__ ? 'Development' : 'Production'}
