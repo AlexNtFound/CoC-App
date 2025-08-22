@@ -1,0 +1,39 @@
+{
+    "cli": {
+      "version": ">= 7.8.6"
+    },
+    "build": {
+      "development": {
+        "developmentClient": true,
+        "distribution": "internal",
+        "ios": {
+          "resourceClass": "default"
+        }
+      },
+      "preview": {
+        "distribution": "internal",
+        "ios": {
+          "simulator": true,
+          "resourceClass": "default"
+        }
+      },
+      "production": {
+        "ios": {
+          "distribution": "store",
+          "resourceClass": "default"
+        },
+        "android": {
+          "distribution": "store"
+        }
+      }
+    },
+    "submit": {
+      "production": {
+        "ios": {
+          "appleId": "你的Apple ID邮箱",
+          "ascAppId": "稍后从App Store Connect获取",
+          "appleTeamId": "你的Team ID"
+        }
+      }
+    }
+  }

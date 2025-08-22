@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ChristiansOnCampus",
+    "name": "Christians on Campus",
     "slug": "ChristiansOnCampus",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,14 +8,45 @@
     "scheme": "christiansoncampus",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "platforms": ["ios", "android"],
+    "description": "A mobile app for Christian campus fellowship, Bible study, and community events",
+    "primaryColor": "#45b7d1",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.alex.christiansoncampuszh",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "requireFullScreen": false,
+      "userInterfaceStyle": "automatic",
+      "infoPlist": {
+        "CFBundleDisplayName": "Christians on Campus",
+        "NSCameraUsageDescription": "This app uses camera for profile photos and event photos",
+        "NSPhotoLibraryUsageDescription": "This app uses photo library to select profile photos",
+        "NSLocationWhenInUseUsageDescription": "This app uses location to help you find nearby campus events",
+        "NSCalendarsUsageDescription": "This app can add events to your calendar",
+        "NSContactsUsageDescription": "This app can help you connect with other campus Christians",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": ["applinks:christiansoncampus.app"]
     },
     "android": {
+      "package": "com.alex.christiansoncampuszh",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -33,10 +64,28 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "newArchEnabled": true
+          },
+          "android": {
+            "newArchEnabled": true
+          }
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f5531958-232a-4ef2-b51e-5e729d9a06f3"
+      }
+    },
+    "owner": "alexnan"
   }
 }
