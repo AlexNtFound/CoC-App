@@ -1,4 +1,4 @@
-// CoC-App/components/DeveloperSettings.tsx (Fixed async version)
+// CoC-App/components/DeveloperSettings.tsx - Bulletproof version with global sync control
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import type { UserRole } from '../contexts/UserRoleContext';
 import { useUserRole } from '../contexts/UserRoleContext';
+import { useRoleSync } from '../hooks/useRoleSync';
 import { useThemeColor } from '../hooks/useThemeColor';
 import { resetSetupForDevelopment } from './InitialSetupScreen';
 import { ThemedText } from './ThemedText';
@@ -21,6 +22,7 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
   const { themeMode } = useTheme();
   const { userRole, updateUserRole } = useUserRole();
   const { currentSession, logout } = useInviteCode();
+  const { disableSync, isSyncDisabled } = useRoleSync();
   const [isExpanded, setIsExpanded] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
@@ -59,13 +61,13 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     );
   };
 
-  // 🔥 FIXED: Direct role change with proper async handling
+  // 🔥 BULLETPROOF: Direct role change with global sync disable
   const handleDirectRoleChange = (targetRole: UserRole) => {
     console.log('🔧 Direct role change initiated:', targetRole);
     
     Alert.alert(
       '🔧 Direct Role Change',
-      `Change role directly to ${targetRole}?\n\nThis will bypass invite code system and update UserRoleContext directly.`,
+      `Change role directly to ${targetRole}?\n\nThis will disable role sync globally to prevent any conflicts.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -74,42 +76,56 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
             try {
               console.log('🔧 Before role change:', userRole);
               
-              // Clear invite code session first
+              // 🔥 STEP 1: Disable role sync GLOBALLY before anything else
+              console.log('🔧 Disabling role sync globally...');
+              disableSync(20000); // 20 seconds - plenty of time
+              
+              // 🔥 STEP 2: Wait for the disable to propagate
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              // 🔥 STEP 3: Clear invite session if authenticated
               if (currentSession.isAuthenticated) {
                 console.log('🔧 Logging out from invite code session...');
                 await logout();
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
               
-              // 🔥 FIXED: Await the async updateUserRole function
+              // 🔥 STEP 4: Update the role
               console.log('🔧 Calling updateUserRole with:', targetRole);
               await updateUserRole(targetRole);
               
-              // Wait a moment then check storage and state
-              setTimeout(async () => {
-                try {
-                  const storedRole = await AsyncStorage.getItem('user_role');
-                  console.log('🔧 Role in storage after update:', storedRole);
-                  console.log('🔧 Current userRole state:', userRole);
-                  
-                  Alert.alert(
-                    'Role Change Complete',
-                    `✅ Success!\n\n` +
-                    `Target: ${targetRole}\n` +
-                    `Stored: ${storedRole}\n` +
-                    `State: ${userRole.role}\n` +
-                    `Can Create Events: ${userRole.permissions.canCreateEvents}\n\n` +
-                    `Check console for detailed logs.`
-                  );
-                } catch (error) {
-                  console.error('🔧 Error in verification:', error);
-                }
-              }, 1000); // Wait 1 second for state updates
+              // 🔥 STEP 5: Wait for the role change to complete
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // 🔥 STEP 6: Verify the change
+              const storedRole = await AsyncStorage.getItem('user_role');
+              console.log('🔧 Verification after role change:', {
+                targetRole,
+                storedRole,
+                currentState: userRole.role,
+                canCreateEvents: userRole.permissions.canCreateEvents,
+                syncDisabled: isSyncDisabled
+              });
+              
+              const isSuccess = userRole.role === targetRole && storedRole === targetRole;
+              
+              Alert.alert(
+                isSuccess ? 'Role Change Success!' : 'Role Change Status',
+                `${isSuccess ? '✅' : '⚠️'} Role Change ${isSuccess ? 'Complete' : 'Partial'}\n\n` +
+                `Target: ${targetRole}\n` +
+                `Current State: ${userRole.role}\n` +
+                `Storage: ${storedRole}\n` +
+                `Can Create Events: ${userRole.permissions.canCreateEvents}\n\n` +
+                `Sync Status: ${isSyncDisabled ? 'DISABLED (Global)' : 'ENABLED'}\n\n` +
+                `${isSuccess ? 'Success! Role sync will re-enable automatically in 20 seconds.' : 'Check console for details.'}`,
+                [{ text: 'OK' }]
+              );
               
             } catch (error) {
               console.error('🔧 Error in direct role change:', error);
               Alert.alert(
                 'Error', 
-                `Failed to change role: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`
+                `Failed to change role: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRole sync will re-enable automatically.\n\nCheck console for details.`
               );
             }
           }
@@ -127,7 +143,7 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
 
     Alert.alert(
       '🔧 Change User Role',
-      'Select a role to test different permissions:',
+      'Select a role to test different permissions:\n\n(Role sync will be disabled globally during the change)',
       [
         { text: 'Cancel', style: 'cancel' },
         ...roles.map(({ role, label, description }) => ({
@@ -171,11 +187,9 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
       
       let info = 'Current AsyncStorage data:\n\n';
       stores.forEach(([key, value]) => {
-        // Show full value for role-related keys
         if (key.includes('role') || key.includes('session') || key.includes('invite')) {
           info += `${key}: ${value}\n\n`;
         } else {
-          // Truncate long values for readability
           const displayValue = value && value.length > 100 
             ? value.substring(0, 100) + '...' 
             : value;
@@ -201,13 +215,11 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     }
   };
 
-  // 🔥 Enhanced role sync check
   const checkRoleSync = async () => {
     const userRoleContextRole = userRole.role;
     const inviteCodeContextRole = currentSession.role;
     const isAuthenticated = currentSession.isAuthenticated;
     
-    // Check storage
     const storedRole = await AsyncStorage.getItem('user_role');
     const storedSession = await AsyncStorage.getItem('current_user_session');
     
@@ -219,7 +231,8 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
       isAuthenticated,
       storedRole,
       storedSession: storedSession ? JSON.parse(storedSession) : null,
-      permissions: userRole.permissions
+      permissions: userRole.permissions,
+      isSyncDisabled
     });
     
     Alert.alert(
@@ -231,16 +244,16 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
       `• Stored Role: ${storedRole || 'null'}\n` +
       `• Can Create Events: ${userRole.permissions.canCreateEvents}\n` +
       `• Is Admin: ${userRole.role === 'admin'}\n\n` +
-      `Status: ${syncStatus}\n\n` +
+      `Sync Status: ${syncStatus}\n` +
+      `Global Sync: ${isSyncDisabled ? 'DISABLED' : 'ENABLED'}\n\n` +
       `Check console for full debug info.`
     );
   };
 
-  // 🔥 FIXED: Test UserRole context with proper async handling
   const testUserRoleContext = () => {
     Alert.alert(
       '🧪 Test UserRole Context',
-      'This will test the UserRole context directly by cycling through roles.',
+      'This will test the UserRole context by cycling through all roles with global sync disabled.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -249,25 +262,46 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
             const roles: UserRole[] = ['student', 'core_member', 'admin'];
             
             try {
+              // Disable sync globally for the entire test
+              console.log('🧪 Starting role cycle test...');
+              disableSync(30000); // 30 seconds
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              // Clear invite session
+              if (currentSession.isAuthenticated) {
+                await logout();
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+              
               for (let i = 0; i < roles.length; i++) {
                 const role = roles[i];
-                console.log(`🧪 Testing role: ${role}`);
+                console.log(`🧪 Testing role ${i + 1}/3: ${role}`);
                 
-                // 🔥 FIXED: Await the async function
                 await updateUserRole(role);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Longer wait
                 
                 const storedRole = await AsyncStorage.getItem('user_role');
                 console.log(`🧪 After setting ${role}:`, {
                   stateRole: userRole.role,
                   canCreateEvents: userRole.permissions.canCreateEvents,
-                  storedRole
+                  storedRole,
+                  syncDisabled: isSyncDisabled
                 });
               }
               
+              // Final verification
+              const finalStoredRole = await AsyncStorage.getItem('user_role');
+              
               Alert.alert(
                 'Test Complete', 
-                `✅ Test finished!\n\nFinal role should be admin.\nCurrent state: ${userRole.role}\nCan create events: ${userRole.permissions.canCreateEvents}\n\nCheck console for detailed results.`
+                `✅ Role cycle test finished!\n\n` +
+                `Final role should be: admin\n` +
+                `Current state: ${userRole.role}\n` +
+                `Storage: ${finalStoredRole}\n` +
+                `Can create events: ${userRole.permissions.canCreateEvents}\n` +
+                `Global sync: ${isSyncDisabled ? 'DISABLED' : 'ENABLED'}\n\n` +
+                `Role sync will automatically re-enable in 30 seconds.\n\n` +
+                `Check console for detailed results.`
               );
             } catch (error) {
               console.error('🧪 Test failed:', error);
@@ -283,13 +317,13 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
     {
       id: 'check-role-sync',
       title: '🔄 Check Role Sync',
-      subtitle: `UserRole: ${getRoleDisplayText()} | Auth: ${currentSession.isAuthenticated ? 'Yes' : 'No'}`,
+      subtitle: `UserRole: ${getRoleDisplayText()} | Auth: ${currentSession.isAuthenticated ? 'Yes' : 'No'} | Global Sync: ${isSyncDisabled ? 'DISABLED' : 'ENABLED'}`,
       action: checkRoleSync,
     },
     {
       id: 'test-user-role',
       title: '🧪 Test UserRole Context',
-      subtitle: 'Test role changes directly',
+      subtitle: 'Cycle through all roles with global sync disabled',
       action: testUserRoleContext,
     },
     {
@@ -343,6 +377,12 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
             ⚠️ These tools are for development only and can reset your app data.
           </ThemedText>
           
+          {isSyncDisabled && (
+            <ThemedText style={styles.syncDisabledWarning}>
+              🔄 Role sync is GLOBALLY DISABLED. It will re-enable automatically.
+            </ThemedText>
+          )}
+          
           {developerActions.map((action, index) => (
             <View key={action.id}>
               <TouchableOpacity
@@ -387,6 +427,15 @@ export default function DeveloperSettings({ visible = __DEV__ }: DeveloperSettin
               }
             ]}>
               Role Sync: {userRole.role === currentSession.role ? '✅ SYNCED' : '❌ OUT OF SYNC'}
+            </ThemedText>
+            <ThemedText style={[
+              styles.infoText, 
+              { 
+                color: isSyncDisabled ? '#f39c12' : '#27ae60',
+                fontWeight: 'bold' 
+              }
+            ]}>
+              Global Sync: {isSyncDisabled ? '🔄 DISABLED' : '✅ ENABLED'}
             </ThemedText>
           </View>
         </View>
@@ -435,6 +484,17 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#ff6b6b20',
     margin: 12,
+    borderRadius: 8,
+    textAlign: 'center',
+  },
+  syncDisabledWarning: {
+    fontSize: 12,
+    color: '#f39c12',
+    fontWeight: 'bold',
+    padding: 12,
+    backgroundColor: '#f39c1220',
+    margin: 12,
+    marginTop: 0,
     borderRadius: 8,
     textAlign: 'center',
   },
