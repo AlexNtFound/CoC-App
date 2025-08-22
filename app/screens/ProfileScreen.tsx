@@ -118,35 +118,36 @@ export default function ProfileScreen() {
 
   // 格式化邀请码输入
   const formatInviteCode = (input: string): string => {
+    // 移除所有非字母数字字符（除了已有的连字符）
     const cleaned = input.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     
+    // 如果长度小于等于2，直接返回
     if (cleaned.length <= 2) {
       return cleaned;
     }
     
-    const segments = [];
-    let remaining = cleaned;
+    // 分割成段：前2个字符，然后每4个字符一段
+    let result = cleaned.substring(0, 2);
+    let remaining = cleaned.substring(2);
     
-    if (remaining.length >= 2) {
-      segments.push(remaining.substr(0, 2));
-      remaining = remaining.substr(2);
+    // 添加第一个连字符
+    if (remaining.length > 0) {
+      result += '-';
     }
     
-    if (segments.length > 0 && remaining.length > 0) {
-      segments[0] += '-';
-    }
-    
+    // 处理剩余的字符，每4个字符添加一个连字符
     while (remaining.length > 0) {
-      const segment = remaining.substr(0, 4);
-      segments.push(segment);
-      remaining = remaining.substr(4);
+      const segment = remaining.substring(0, 4);
+      result += segment;
+      remaining = remaining.substring(4);
       
+      // 只有在还有剩余字符时才添加连字符
       if (remaining.length > 0) {
-        segments[segments.length - 1] += '-';
+        result += '-';
       }
     }
     
-    return segments.join('');
+    return result;
   };
   
   // 渲染邀请码激活部分
@@ -224,22 +225,23 @@ export default function ProfileScreen() {
               
               <View style={styles.formField}>
                 <ThemedText style={styles.fieldLabel}>Invite Code *</ThemedText>
-                <TextInput
-                  style={[
-                    styles.inviteCodeInput,
-                    { borderColor, color: textColor, backgroundColor }
-                  ]}
-                  value={inviteCodeForm.code}
-                  onChangeText={(text) => setInviteCodeForm(prev => ({ 
-                    ...prev, 
-                    code: formatInviteCode(text) 
-                  }))}
-                  placeholder="AD-2025-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-                  placeholderTextColor={borderColor}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  maxLength={44}
-                />
+                                 <TextInput
+                   style={[
+                     styles.textInput,
+                     { borderColor, color: textColor, backgroundColor }
+                   ]}
+                   value={inviteCodeForm.code}
+                   onChangeText={(text: string) => {
+                     setInviteCodeForm(prev => ({ 
+                       ...prev, 
+                       code: text.toUpperCase()
+                     }));
+                   }}
+                   placeholder="Paste your invite code here"
+                   placeholderTextColor={borderColor}
+                   autoCapitalize="characters"
+                   autoCorrect={false}
+                 />
               </View>
   
               <View style={styles.formField}>
@@ -250,7 +252,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.name}
-                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, name: text }))}
+                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, name: text }))}
                   placeholder="Enter your full name"
                   placeholderTextColor={borderColor}
                   maxLength={50}
@@ -265,7 +267,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.campus}
-                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, campus: text }))}
+                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, campus: text }))}
                   placeholder="Enter your university"
                   placeholderTextColor={borderColor}
                   maxLength={100}
@@ -280,7 +282,7 @@ export default function ProfileScreen() {
                     { borderColor, color: textColor, backgroundColor }
                   ]}
                   value={inviteCodeForm.email}
-                  onChangeText={(text) => setInviteCodeForm(prev => ({ ...prev, email: text }))}
+                                     onChangeText={(text: string) => setInviteCodeForm(prev => ({ ...prev, email: text }))}
                   placeholder="Enter your email"
                   placeholderTextColor={borderColor}
                   keyboardType="email-address"
