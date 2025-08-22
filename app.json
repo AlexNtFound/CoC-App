@@ -69,7 +69,12 @@
         "expo-build-properties",
         {
           "ios": {
-            "newArchEnabled": true
+            "useFrameworks": "static",
+            "extraPods": [
+              { "name": "GoogleUtilities", "modular_headers": true },
+              { "name": "FirebaseCoreInternal", "modular_headers": true },
+              { "name": "FirebaseCore", "modular_headers": true }
+            ]
           },
           "android": {
             "newArchEnabled": true
