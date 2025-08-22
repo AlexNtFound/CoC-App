@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import DeveloperSettings from '../../components/DeveloperSettings';
 import Header from '../../components/Header';
 import ThemedProfileIcon from '../../components/ThemedProfileIcon';
 import { ThemedText } from '../../components/ThemedText';
@@ -498,6 +499,8 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
+        
+        <DeveloperSettings />
 
         {/* Bottom padding for safe area */}
         <View style={{ height: 20 }} />
