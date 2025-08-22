@@ -104,6 +104,7 @@ const translations = {
     profile: {
       title: 'Profile',
       edit: 'Edit',
+      callSupport: 'Call Support',
       campus: '🎓 Campus:',
       year: '📚 Year:',
       joined: '📅 Joined:',
@@ -279,6 +280,7 @@ const translations = {
     profile: {
       title: '个人资料',
       edit: '编辑',
+      callSupport: '联系我们',
       campus: '🎓 校园：',
       year: '📚 年级：',
       joined: '📅 加入时间：',

@@ -1,20 +1,21 @@
-// app/screens/ProfileScreen.tsx
+// CoC-App/app/screens/ProfileScreen.tsx
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
+  Linking,
   ScrollView,
   StyleSheet,
   Switch,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Header from '../../components/Header';
 import ThemedProfileIcon from '../../components/ThemedProfileIcon';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
+import type { Language } from '../../contexts/LanguageContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
@@ -24,11 +25,12 @@ interface SettingsItem {
   id: string;
   title: string;
   subtitle: string;
-  type: 'toggle' | 'navigation' | 'action' | 'theme-option';
+  type: 'toggle' | 'navigation' | 'action' | 'theme-option' | 'language-option';
   icon: string;
   value?: boolean;
   action?: () => void;
   selected?: boolean;
+  isSubItem?: boolean;
 }
 
 interface SettingsSection {
@@ -37,16 +39,21 @@ interface SettingsSection {
 }
 
 export default function ProfileScreen() {
-  const insets = useSafeAreaInsets();
   const { t, language, setLanguage } = useLanguage();
   const { user } = useUser();
   const { themeMode, setThemeMode, isDark } = useTheme();
+  
+  const [showLanguageOptions, setShowLanguageOptions] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({}, 'background');
   const borderColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
   const accentColor = useThemeColor({}, 'tint');
+
+  const handleBackPress = () => {
+    router.back();
+  };
 
   const handleEditProfile = () => {
     router.push('/profile-edit');
@@ -66,20 +73,53 @@ export default function ProfileScreen() {
     setThemeMode(mode);
   };
 
+  const handleLanguageSelection = (lang: Language) => {
+    setLanguage(lang);
+  };
+
   const handleLanguagePress = () => {
+    console.log('Language pressed, current state:', showLanguageOptions);
+    setShowLanguageOptions(!showLanguageOptions);
+  };
+
+  const handleHelpSupportPress = () => {
+    const supportPhoneNumber = '+1-650-505-6637'; // 替换为实际的支持电话号码
+    
     Alert.alert(
-      t('profile.language'),
-      t('profile.selectLanguage'),
+      t('profile.helpSupport'),
+      t('profile.helpSupportDesc') + '\n\n' + supportPhoneNumber,
       [
-        { text: 'English', onPress: () => setLanguage('en') },
-        { text: '中文', onPress: () => setLanguage('zh') },
         { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: t('profile.callSupport'), 
+          onPress: () => {
+            const phoneUrl = `tel:${supportPhoneNumber}`;
+            Linking.canOpenURL(phoneUrl)
+              .then(supported => {
+                if (supported) {
+                  Linking.openURL(phoneUrl);
+                } else {
+                  Alert.alert(
+                    t('profile.callNotSupported'), 
+                    t('profile.callNotSupportedDesc')
+                  );
+                }
+              })
+              .catch(err => {
+                console.error('Error opening phone dialer:', err);
+                Alert.alert(
+                  t('profile.callError'), 
+                  t('profile.callErrorDesc')
+                );
+              });
+          }
+        },
       ]
     );
   };
 
-  const getLanguageDisplayText = () => {
-    return language === 'en' ? 'English' : '中文';
+  const getLanguageDisplayText = (lang: Language) => {
+    return lang === 'en' ? 'English' : '中文';
   };
 
   const getThemeDisplayText = () => {
@@ -125,13 +165,41 @@ export default function ProfileScreen() {
       <TouchableOpacity
         style={[
           styles.themeOptionContainer,
+          item.isSubItem && styles.subItemContainer,
           isSelected && { backgroundColor: accentColor + '20', borderColor: accentColor }
         ]}
         onPress={item.action}
       >
-        <View style={styles.themeOptionContent}>
+        <View style={[styles.themeOptionContent, item.isSubItem && styles.subItemContent]}>
           <ThemedText style={styles.themeOptionIcon}>{item.icon}</ThemedText>
           <View style={styles.themeOptionText}>
+            <ThemedText style={[styles.settingsItemTitle, isSelected && { color: accentColor }]}>
+              {item.title}
+            </ThemedText>
+            <ThemedText style={styles.settingsItemSubtitle}>{item.subtitle}</ThemedText>
+          </View>
+          {isSelected && (
+            <ThemedText style={[styles.checkmark, { color: accentColor }]}>✓</ThemedText>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderLanguageOption = (item: SettingsItem) => {
+    const isSelected = item.selected;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.languageOptionContainer,
+          item.isSubItem && styles.subItemContainer,
+          isSelected && { backgroundColor: accentColor + '20', borderColor: accentColor }
+        ]}
+        onPress={item.action}
+      >
+        <View style={[styles.languageOptionContent, item.isSubItem && styles.subItemContent]}>
+          <ThemedText style={styles.languageOptionIcon}>{item.icon}</ThemedText>
+          <View style={styles.languageOptionText}>
             <ThemedText style={[styles.settingsItemTitle, isSelected && { color: accentColor }]}>
               {item.title}
             </ThemedText>
@@ -149,12 +217,19 @@ export default function ProfileScreen() {
     if (item.type === 'theme-option') {
       return renderThemeOption(item);
     }
+    
+    if (item.type === 'language-option') {
+      return renderLanguageOption(item);
+    }
 
     return (
       <TouchableOpacity
-        style={styles.settingsItemContainer}
-        onPress={item.action}
-        disabled={item.type === 'toggle'}
+        style={[styles.settingsItem, { backgroundColor: cardBackground, borderColor }]}
+        onPress={() => {
+          console.log('Settings item pressed:', item.id, item.action);
+          item.action?.();
+        }}
+        disabled={!item.action}
       >
         <View style={styles.settingsItemContent}>
           <ThemedText style={styles.settingsItemIcon}>{item.icon}</ThemedText>
@@ -165,13 +240,22 @@ export default function ProfileScreen() {
           {item.type === 'toggle' && (
             <Switch
               value={item.value}
-              onValueChange={item.action}
-              trackColor={{ false: borderColor, true: accentColor }}
+              onValueChange={() => item.action?.()}
+              trackColor={{ false: '#767577', true: accentColor }}
               thumbColor={item.value ? '#ffffff' : '#f4f3f4'}
             />
           )}
           {item.type === 'navigation' && (
-            <ThemedText style={styles.chevron}>›</ThemedText>
+            <ThemedText style={[
+              styles.chevron, 
+              { 
+                transform: [{ 
+                  rotate: showLanguageOptions && item.id === 'language' ? '90deg' : '0deg' 
+                }] 
+              }
+            ]}>
+              ›
+            </ThemedText>
           )}
         </View>
       </TouchableOpacity>
@@ -191,7 +275,7 @@ export default function ProfileScreen() {
     }
   ];
 
-  // Add manual theme options if not following system
+  // Add manual theme options only if NOT following system
   if (themeMode !== 'system') {
     themeItems.push(
       {
@@ -202,6 +286,7 @@ export default function ProfileScreen() {
         icon: '☀️',
         selected: themeMode === 'light',
         action: () => handleManualThemeSelection('light'),
+        isSubItem: true,
       },
       {
         id: 'dark-theme',
@@ -211,6 +296,52 @@ export default function ProfileScreen() {
         icon: '🌙',
         selected: themeMode === 'dark',
         action: () => handleManualThemeSelection('dark'),
+        isSubItem: true,
+      }
+    );
+  }
+
+  // Create language-related settings
+  const languageItems: SettingsItem[] = [
+    {
+      id: 'language',
+      title: t('profile.language'),
+      subtitle: `${t('common.current')}: ${getLanguageDisplayText(language)}`,
+      type: 'navigation' as const,
+      icon: '🌍',
+      action: handleLanguagePress,
+    }
+  ];
+
+  // Add language options only if dropdown is open
+  if (showLanguageOptions) {
+    console.log('Adding language options to menu');
+    languageItems.push(
+      {
+        id: 'english-language',
+        title: 'English',
+        subtitle: 'Use English interface',
+        type: 'language-option' as const,
+        icon: '🇺🇸',
+        selected: language === 'en',
+        action: () => {
+          console.log('English selected');
+          handleLanguageSelection('en');
+        },
+        isSubItem: true,
+      },
+      {
+        id: 'chinese-language',
+        title: '中文',
+        subtitle: '使用中文界面',
+        type: 'language-option' as const,
+        icon: '🇨🇳',
+        selected: language === 'zh',
+        action: () => {
+          console.log('Chinese selected');
+          handleLanguageSelection('zh');
+        },
+        isSubItem: true,
       }
     );
   }
@@ -222,16 +353,7 @@ export default function ProfileScreen() {
     },
     {
       title: t('profile.preferences'),
-      items: [
-        {
-          id: 'language',
-          title: t('profile.language'),
-          subtitle: `${t('common.current')}: ${getLanguageDisplayText()}`,
-          type: 'navigation' as const,
-          icon: '🌍',
-          action: handleLanguagePress,
-        },
-      ],
+      items: languageItems,
     },
     {
       title: t('profile.account'),
@@ -271,16 +393,16 @@ export default function ProfileScreen() {
           subtitle: t('profile.helpSupportDesc'),
           type: 'navigation' as const,
           icon: '❓',
-          action: () => Alert.alert(t('profile.helpSupport'), t('profile.featureComingSoon')),
+          action: handleHelpSupportPress,
         },
-        {
-          id: 'send-feedback',
-          title: t('profile.sendFeedback'),
-          subtitle: t('profile.sendFeedbackDesc'),
-          type: 'navigation' as const,
-          icon: '💬',
-          action: () => Alert.alert(t('profile.sendFeedback'), t('profile.featureComingSoon')),
-        },
+        // {
+        //   id: 'send-feedback',
+        //   title: t('profile.sendFeedback'),
+        //   subtitle: t('profile.sendFeedbackDesc'),
+        //   type: 'navigation' as const,
+        //   icon: '💬',
+        //   action: () => Alert.alert(t('profile.sendFeedback'), t('profile.featureComingSoon')),
+        // },
         {
           id: 'about',
           title: t('profile.about'),
@@ -291,101 +413,85 @@ export default function ProfileScreen() {
         },
       ],
     },
-    {
-      title: t('profile.accountActions'),
-      items: [
-        {
-          id: 'logout',
-          title: t('profile.signOut'),
-          subtitle: t('profile.signOutDesc'),
-          type: 'action' as const,
-          icon: '🚪',
-          action: () => {
-            Alert.alert(
-              t('profile.signOut'),
-              t('profile.signOutConfirm'),
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                { 
-                  text: t('profile.signOut'), 
-                  style: 'destructive',
-                  onPress: () => {
-                    // Implement sign out logic here
-                    Alert.alert(t('profile.signedOut'));
-                  }
-                },
-              ]
-            );
-          },
-        },
-      ],
-    },
+    // {
+    //   title: t('profile.accountActions'),
+    //   items: [
+    //     {
+    //       id: 'logout',
+    //       title: t('profile.signOut'),
+    //       subtitle: t('profile.signOutDesc'),
+    //       type: 'action' as const,
+    //       icon: '🚪',
+    //       action: () => {
+    //         Alert.alert(
+    //           t('profile.signOut'),
+    //           t('profile.signOutConfirm'),
+    //           [
+    //             { text: t('common.cancel'), style: 'cancel' },
+    //             { 
+    //               text: t('profile.signOut'), 
+    //               style: 'destructive',
+    //               onPress: () => {
+    //                 // Implement sign out logic here
+    //                 Alert.alert(t('profile.signedOut'));
+    //               }
+    //             },
+    //           ]
+    //         );
+    //       },
+    //     },
+    //   ],
+    // },
   ];
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor, paddingTop: insets.top }]}>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
       <Header 
-        title={t('profile.title')} 
-        showBackButton={false}
+        title={t('profile.title')}
+        showBackButton={true}
         showProfile={false}
+        onBackPress={handleBackPress}
       />
-      
-      <ScrollView 
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: cardBackground, borderColor }]}>
-          {/* Edit Button - Positioned absolutely in top right */}
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* User Profile Header */}
+        <View style={[styles.profileHeader, { backgroundColor: cardBackground, borderColor }]}>
+          <ThemedProfileIcon size={80} />
+          <View style={styles.profileInfo}>
+            <ThemedText style={styles.userName}>{user?.name || 'Guest User'}</ThemedText>
+            <ThemedText style={styles.userDetails}>
+              {t('profile.campus')} {user?.campus || 'Unknown Campus'}
+            </ThemedText>
+            <ThemedText style={styles.userDetails}>
+              {t('profile.year')} {user?.year || 'Unknown Year'}
+            </ThemedText>
+            <ThemedText style={styles.userDetails}>
+              {t('profile.joined')} {user?.joinDate || 'Unknown Date'}
+            </ThemedText>
+          </View>
           <TouchableOpacity 
-            style={styles.editButton}
+            style={[styles.editButton, { borderColor: accentColor }]}
             onPress={handleEditProfile}
           >
-            <ThemedText style={styles.editButtonText}>{t('profile.edit')}</ThemedText>
+            <ThemedText style={[styles.editButtonText, { color: accentColor }]}>
+              {t('profile.edit')}
+            </ThemedText>
           </TouchableOpacity>
-
-          {/* Centered Profile Image */}
-          <View style={styles.profileImageContainer}>
-            <ThemedProfileIcon size={80} />
-          </View>
-
-          <ThemedText style={styles.profileName}>{user.name}</ThemedText>
-          <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
-
-          <View style={styles.profileDetails}>
-            <View style={styles.profileDetailRow}>
-              <ThemedText style={styles.profileDetailLabel}>{t('profile.campus')}</ThemedText>
-              <ThemedText style={styles.profileDetailValue}>{user.campus}</ThemedText>
-            </View>
-            <View style={styles.profileDetailRow}>
-              <ThemedText style={styles.profileDetailLabel}>{t('profile.year')}</ThemedText>
-              <ThemedText style={styles.profileDetailValue}>{user.year}</ThemedText>
-            </View>
-            <View style={styles.profileDetailRow}>
-              <ThemedText style={styles.profileDetailLabel}>{t('profile.joined')}</ThemedText>
-              <ThemedText style={styles.profileDetailValue}>{user.joinDate}</ThemedText>
-            </View>
-          </View>
         </View>
 
-        {/* Stats Card */}
+        {/* Activity Stats */}
         {renderStatsCard()}
 
         {/* Settings Sections */}
-        {settingsSections.map((section) => (
+        {settingsSections.map((section, sectionIndex) => (
           <View key={section.title} style={styles.settingsSection}>
             <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
-            <View style={[styles.settingsCard, { backgroundColor: cardBackground, borderColor }]}>
-              {section.items.map((item, index) => (
+            <View style={[styles.sectionContent, { backgroundColor: cardBackground, borderColor }]}>
+              {section.items.map((item, itemIndex) => (
                 <View key={item.id}>
                   {renderSettingsItem(item)}
-                  {index < section.items.length - 1 && item.type !== 'theme-option' && (
-                    <View style={[styles.settingsDivider, { borderBottomColor: borderColor }]} />
-                  )}
-                  {/* Add spacing between theme options */}
-                  {item.type === 'theme-option' && index < section.items.length - 1 && (
-                    <View style={styles.themeOptionSpacing} />
+                  {itemIndex < section.items.length - 1 && (
+                    <View style={[styles.separator, { backgroundColor: borderColor }]} />
                   )}
                 </View>
               ))}
@@ -393,11 +499,8 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        {/* Version Info */}
-        <View style={styles.versionInfo}>
-          <ThemedText style={styles.versionText}>{t('profile.version')}</ThemedText>
-          <ThemedText style={styles.versionSubtext}>{t('profile.madeWith')}</ThemedText>
-        </View>
+        {/* Bottom padding for safe area */}
+        <View style={{ height: 20 }} />
       </ScrollView>
     </ThemedView>
   );
@@ -407,88 +510,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContainer: {
+  scrollView: {
     flex: 1,
+    paddingHorizontal: 16,
   },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  profileCard: {
-    borderRadius: 16,
-    borderWidth: 1,
+  profileHeader: {
+    flexDirection: 'row',
     padding: 20,
-    marginBottom: 20,
-    position: 'relative',
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  profileInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  userDetails: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 2,
   },
   editButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#45b7d1',
-    zIndex: 1,
+    borderWidth: 1,
+    borderRadius: 20,
   },
   editButtonText: {
-    color: 'white',
     fontSize: 14,
     fontWeight: '600',
   },
-  profileImageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  profileName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  profileEmail: {
-    fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  profileDetails: {
-    gap: 8,
-  },
-  profileDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  profileDetailLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  profileDetailValue: {
-    fontSize: 14,
-    opacity: 0.8,
-  },
   statsCard: {
-    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 20,
-    marginBottom: 20,
   },
   statsTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     marginBottom: 16,
   },
   statsContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-around',
   },
   statItem: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
   },
   statNumber: {
     fontSize: 24,
@@ -497,32 +572,33 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    opacity: 0.7,
     textAlign: 'center',
+    opacity: 0.7,
   },
   statDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 20,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    marginHorizontal: 8,
   },
   settingsSection: {
-    marginBottom: 24,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
-    marginLeft: 4,
+    marginBottom: 8,
+    paddingLeft: 4,
+    opacity: 0.8,
   },
-  settingsCard: {
-    borderRadius: 16,
+  sectionContent: {
+    borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  settingsItemContainer: {
+  settingsItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderWidth: 0,
   },
   settingsItemContent: {
     flexDirection: 'row',
@@ -543,62 +619,70 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   settingsItemSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
+    fontSize: 13,
+    opacity: 0.6,
   },
   chevron: {
-    fontSize: 18,
-    opacity: 0.5,
-    marginLeft: 8,
+    fontSize: 20,
+    opacity: 0.3,
   },
-  settingsDivider: {
-    borderBottomWidth: 1,
-    marginHorizontal: 16,
-  },
-  // Theme option specific styles
   themeOptionContainer: {
     marginHorizontal: 16,
     marginVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'transparent',
   },
   themeOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  themeOptionText: {
-    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   themeOptionIcon: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 12,
     width: 24,
     textAlign: 'center',
   },
-  themeOptionSpacing: {
-    height: 4,
+  themeOptionText: {
+    flex: 1,
+  },
+  languageOptionContainer: {
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  languageOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  languageOptionIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  languageOptionText: {
+    flex: 1,
+  },
+  subItemContainer: {
+    marginLeft: 32,
+    marginRight: 16,
+  },
+  subItemContent: {
+    paddingLeft: 8,
   },
   checkmark: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
-  versionInfo: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingBottom: 40,
-  },
-  versionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-    opacity: 0.8,
-  },
-  versionSubtext: {
-    fontSize: 12,
-    opacity: 0.6,
+  separator: {
+    height: 1,
+    marginLeft: 48,
   },
 });
