@@ -89,6 +89,15 @@
       "router": {},
       "eas": {
         "projectId": "f5531958-232a-4ef2-b51e-5e729d9a06f3"
+      },
+      "firebase": {
+        "EXPO_PUBLIC_FB_API_KEY": "AIzaSyDBRBTJU6onbmqYgIKlHDLofFVKj7Am6i0",
+        "EXPO_PUBLIC_FB_AUTH_DOMAIN": "christians-on-campus-f792d.firebaseapp.com",
+        "EXPO_PUBLIC_FB_PROJECT_ID": "christians-on-campus-f792d",
+        "EXPO_PUBLIC_FB_STORAGE_BUCKET": "christians-on-campus-f792d.firebasestorage.app",
+        "EXPO_PUBLIC_FB_MSG_SENDER_ID": "232802687776",
+        "EXPO_PUBLIC_FB_APP_ID": "1:232802687776:web:4dccb4322012e8b41d1545",
+        "EXPO_PUBLIC_FB_MEASUREMENT_ID": "G-LX5VLFYVZQ"
       }
     },
     "owner": "alexnan"

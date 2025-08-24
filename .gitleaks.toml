@@ -1,0 +1,5 @@
+[allowlist]
+  description = "Allow Firebase web apiKey in client config only"
+  # 仅忽略这两个文件中的 AIza…（别全局忽略）
+  paths = ["app.json", "config/firebase.ts"]
+  regexes = ['''(?m)(EXPO_PUBLIC_FB_API_KEY|apiKey)".*:"AIza[0-9A-Za-z_\-]{35}"''']
