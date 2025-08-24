@@ -21,6 +21,12 @@ export default function TabBarBackground() {
   );
 }
 
+// 添加缺失的导出函数
+export function useBottomTabOverflow() {
+  // 对于非 iOS 平台，返回 0 或适当的默认值
+  return 0;
+}
+
 const styles = StyleSheet.create({
   tabBarBackground: {
     borderTopWidth: 0.5,

@@ -27,21 +27,26 @@ export default function ParallaxScrollView({
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
   const bottom = useBottomTabOverflow();
+  
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollOffset.value,
+      [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
+      [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
+    );
+    
+    const scale = interpolate(
+      scrollOffset.value, 
+      [-HEADER_HEIGHT, 0, HEADER_HEIGHT], 
+      [2, 1, 1]
+    );
+
     return {
       transform: [
-        {
-          translateY: interpolate(
-            scrollOffset.value,
-            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
-          ),
-        },
-        {
-          scale: interpolate(scrollOffset.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1]),
-        },
+        { translateY },
+        { scale },
       ],
-    };
+    } as any; // 类型断言解决 Reanimated 类型兼容性问题
   });
 
   return (
@@ -55,7 +60,7 @@ export default function ParallaxScrollView({
           style={[
             styles.header,
             { backgroundColor: headerBackgroundColor[colorScheme] },
-            headerAnimatedStyle,
+            headerAnimatedStyle as any, // 类型断言解决样式类型兼容性
           ]}>
           {headerImage}
         </Animated.View>

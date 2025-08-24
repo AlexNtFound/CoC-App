@@ -1,22 +1,22 @@
-// CoC-App/app/create-event.tsx
+// CoC-App/app/create-event.tsx - 更新使用Firebase
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../components/Header';
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
-import type { EventData } from '../contexts/EventContext';
-import { useEvents } from '../contexts/EventContext';
+import type { FirebaseEventData } from '../contexts/FirebaseEventContext';
+import { useFirebaseEvents } from '../contexts/FirebaseEventContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUser } from '../contexts/UserContext';
 import { useUserRole } from '../contexts/UserRoleContext';
@@ -28,7 +28,7 @@ interface CreateEventForm {
   date: string;
   time: string;
   location: string;
-  category: EventData['category'];
+  category: FirebaseEventData['category'];
   maxAttendees: string;
   requirements: string;
   contactInfo: string;
@@ -38,7 +38,7 @@ export default function CreateEventScreen() {
   const { t } = useLanguage();
   const { user } = useUser();
   const { canCreateEvents } = useUserRole();
-  const { createEvent } = useEvents();
+  const { createEvent, todayUsage } = useFirebaseEvents();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -154,14 +154,16 @@ export default function CreateEventScreen() {
     setIsLoading(true);
 
     try {
-      const eventData: Omit<EventData, 'id' | 'attendees' | 'waitingList' | 'createdAt' | 'updatedAt'> = {
+      console.log('🔥 Creating Firebase event...');
+      
+      const eventData: Omit<FirebaseEventData, 'id' | 'attendees' | 'waitingList' | 'createdAt' | 'updatedAt' | 'attendeeCount' | 'waitingListCount'> = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         date: formData.date.trim(),
         time: formData.time.trim(),
         location: formData.location.trim(),
-        organizer: user?.name || 'Unknown',
-        organizerId: user?.email || 'unknown', // Using email as ID for now
+        organizer: user?.name || 'Unknown Organizer',
+        organizerId: user?.email || 'unknown',
         category: formData.category,
         maxAttendees: formData.maxAttendees ? Number(formData.maxAttendees) : undefined,
         isPublished: true,
@@ -170,16 +172,17 @@ export default function CreateEventScreen() {
       };
 
       const eventId = await createEvent(eventData);
+      console.log('🔥 Firebase event created with ID:', eventId);
 
       Alert.alert(
-        'Success',
-        'Event created successfully!',
+        '✅ Event Created Successfully!',
+        `Your event "${formData.title}" has been created and is now visible to all users.`,
         [
           {
-            text: 'View Event',
+            text: 'View Events',
             onPress: () => {
               router.back();
-              // TODO: Navigate to event detail view
+              // TODO: Navigate to specific event detail view
             },
           },
           {
@@ -206,8 +209,11 @@ export default function CreateEventScreen() {
         ]
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to create event. Please try again.');
-      console.error('Error creating event:', error);
+      console.error('🔥 Error creating Firebase event:', error);
+      Alert.alert(
+        'Error Creating Event', 
+        'Failed to create event. Please check your internet connection and try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -251,6 +257,30 @@ export default function CreateEventScreen() {
     return category ? `${category.icon} ${category.label}` : 'Select Category';
   };
 
+  // Auto-format date as user types
+  const handleDateChange = (text: string) => {
+    // Remove any non-digit characters
+    const cleaned = text.replace(/\D/g, '');
+    
+    // Format as YYYY-MM-DD
+    let formatted = cleaned;
+    if (cleaned.length >= 4) {
+      formatted = cleaned.substring(0, 4) + '-';
+      if (cleaned.length >= 6) {
+        formatted += cleaned.substring(4, 6) + '-';
+        if (cleaned.length >= 8) {
+          formatted += cleaned.substring(6, 8);
+        } else {
+          formatted += cleaned.substring(6);
+        }
+      } else {
+        formatted += cleaned.substring(4);
+      }
+    }
+    
+    updateField('date', formatted);
+  };
+
   if (!canCreateEvents) {
     return null; // Component will redirect via useEffect
   }
@@ -263,6 +293,15 @@ export default function CreateEventScreen() {
         showProfile={false}
         onBackPress={handleCancel}
       />
+
+      {/* Firebase Usage Indicator (Development) */}
+      {__DEV__ && (
+        <ThemedView style={[styles.usageIndicator, { backgroundColor: cardBackground, borderColor }]}>
+          <ThemedText style={styles.usageText}>
+            🔥 Today's usage: {todayUsage.reads} reads, {todayUsage.writes} writes
+          </ThemedText>
+        </ThemedView>
+      )}
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -363,9 +402,10 @@ export default function CreateEventScreen() {
                   }
                 ]}
                 value={formData.date}
-                onChangeText={(text) => updateField('date', text)}
+                onChangeText={handleDateChange}
                 placeholder="2025-08-25"
                 placeholderTextColor={placeholderColor}
+                keyboardType="numeric"
                 maxLength={10}
               />
               {errors.date && <ThemedText style={styles.errorText}>{errors.date}</ThemedText>}
@@ -515,9 +555,16 @@ export default function CreateEventScreen() {
               disabled={isLoading}
             >
               <ThemedText style={styles.createButtonText}>
-                {isLoading ? 'Creating...' : 'Create Event'}
+                {isLoading ? 'Creating...' : '🔥 Create Event'}
               </ThemedText>
             </TouchableOpacity>
+          </View>
+
+          {/* Firebase Info */}
+          <View style={[styles.firebaseInfo, { backgroundColor: cardBackground, borderColor }]}>
+            <ThemedText style={styles.firebaseInfoText}>
+              🔥 This event will be instantly synced to all users' devices via Firebase
+            </ThemedText>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -528,6 +575,19 @@ export default function CreateEventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  usageIndicator: {
+    marginHorizontal: 20,
+    marginVertical: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  usageText: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
   },
   keyboardAvoid: {
     flex: 1,
@@ -635,5 +695,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  firebaseInfo: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 10,
+  },
+  firebaseInfoText: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

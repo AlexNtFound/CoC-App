@@ -1,4 +1,4 @@
-// CoC-App/app/screens/EventsScreen.tsx (Updated)
+// CoC-App/app/screens/EventsScreen.tsx - 更新使用Firebase
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,8 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
-import type { EventData } from '../../contexts/EventContext';
-import { useEvents } from '../../contexts/EventContext';
+import type { FirebaseEventData } from '../../contexts/FirebaseEventContext';
+import { useFirebaseEvents } from '../../contexts/FirebaseEventContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUser } from '../../contexts/UserContext';
 import { useUserRole } from '../../contexts/UserRoleContext';
@@ -29,14 +29,15 @@ export default function EventsScreen() {
     filteredEvents,
     filter,
     loading,
+    error,
     rsvpEvent,
     cancelRsvp,
     setFilter,
-    refreshEvents,
-    getUserRsvpStatus
-  } = useEvents();
+    getUserRsvpStatus,
+    todayUsage,
+  } = useFirebaseEvents();
   
-  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<FirebaseEventData | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,14 +57,11 @@ export default function EventsScreen() {
     { key: 'prayer', label: t('events.prayer'), icon: '🕊️' },
   ];
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    try {
-      await refreshEvents();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshEvents]);
+    // Firebase实时监听会自动更新，这里只是UI反馈
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -97,41 +95,36 @@ export default function EventsScreen() {
     return today.toDateString() === eventDate.toDateString();
   };
 
-  const isEventSoon = (dateString: string) => {
-    const today = new Date();
-    const eventDate = new Date(dateString);
-    const timeDiff = eventDate.getTime() - today.getTime();
-    const daysDiff = timeDiff / (1000 * 3600 * 24);
-    return daysDiff >= 0 && daysDiff <= 3;
-  };
-
   const getUserId = () => {
     return user?.email || 'anonymous';
   };
 
-  const handleRSVP = async (event: EventData) => {
+  const getUserName = () => {
+    return user?.name || 'Anonymous User';
+  };
+
+  const handleRSVP = async (event: FirebaseEventData) => {
     const userId = getUserId();
+    const userName = getUserName();
     const currentStatus = getUserRsvpStatus(event.id, userId);
     
     try {
       if (currentStatus === 'not_registered') {
-        const success = await rsvpEvent(event.id, userId);
-        if (success) {
-          const newStatus = getUserRsvpStatus(event.id, userId);
-          if (newStatus === 'waiting_list') {
-            const position = event.waitingList.indexOf(userId) + 1;
-            Alert.alert(
-              '🎫 Added to Queue',
-              `The event is full, but you're #${position} in the queue. You'll be automatically registered if someone cancels!`,
-              [{ text: 'Got it!' }]
-            );
-          } else {
-            Alert.alert(
-              '✅ Registration Confirmed',
-              `You're registered for "${event.title}"!`,
-              [{ text: 'Great!' }]
-            );
-          }
+        const result = await rsvpEvent(event.id, userId, userName);
+        
+        if (result === 'waiting_list') {
+          const position = event.waitingList.indexOf(userId) + 1;
+          Alert.alert(
+            '🎫 Added to Queue',
+            `The event is full, but you're #${position} in the queue. You'll be automatically registered if someone cancels!`,
+            [{ text: 'Got it!' }]
+          );
+        } else {
+          Alert.alert(
+            '✅ Registration Confirmed',
+            `You're registered for "${event.title}"!`,
+            [{ text: 'Great!' }]
+          );
         }
       } else {
         // Show confirmation for cancellation
@@ -168,10 +161,11 @@ export default function EventsScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update registration. Please try again.');
+      console.error('RSVP Error:', error);
     }
   };
 
-  const handleEventPress = (event: EventData) => {
+  const handleEventPress = (event: FirebaseEventData) => {
     setSelectedEvent(event);
     setShowEventModal(true);
   };
@@ -187,9 +181,9 @@ export default function EventsScreen() {
     router.push('/create-event');
   };
 
-  const getAttendeeCountText = (event: EventData) => {
-    const totalRegistered = event.attendees.length;
-    const waitingListCount = event.waitingList.length;
+  const getAttendeeCountText = (event: FirebaseEventData) => {
+    const totalRegistered = event.attendeeCount || 0;
+    const waitingListCount = event.waitingListCount || 0;
     
     if (event.maxAttendees) {
       let text = `👥 ${totalRegistered}/${event.maxAttendees} attending`;
@@ -206,7 +200,7 @@ export default function EventsScreen() {
     }
   };
 
-  const getRSVPButtonText = (event: EventData) => {
+  const getRSVPButtonText = (event: FirebaseEventData) => {
     const userId = getUserId();
     const status = getUserRsvpStatus(event.id, userId);
     
@@ -218,14 +212,14 @@ export default function EventsScreen() {
         return `🎫 #${position} in Queue`;
       case 'not_registered':
       default:
-        if (event.maxAttendees && event.attendees.length >= event.maxAttendees) {
+        if (event.maxAttendees && event.attendeeCount >= event.maxAttendees) {
           return '🎫 Join Queue';
         }
         return '📝 Register';
     }
   };
 
-  const getRSVPButtonColor = (event: EventData) => {
+  const getRSVPButtonColor = (event: FirebaseEventData) => {
     const userId = getUserId();
     const status = getUserRsvpStatus(event.id, userId);
     
@@ -236,17 +230,17 @@ export default function EventsScreen() {
         return '#f39c12'; // Orange - waiting
       case 'not_registered':
       default:
-        if (event.maxAttendees && event.attendees.length >= event.maxAttendees) {
+        if (event.maxAttendees && event.attendeeCount >= event.maxAttendees) {
           return '#3498db'; // Blue - join queue
         }
         return '#45b7d1'; // Default blue - register
     }
   };
 
-  const renderEvent = ({ item }: { item: EventData }) => {
+  const renderEvent = ({ item }: { item: FirebaseEventData }) => {
     const userId = getUserId();
     const userStatus = getUserRsvpStatus(item.id, userId);
-    const isEventFull = item.maxAttendees && item.attendees.length >= item.maxAttendees;
+    const isEventFull = item.maxAttendees && item.attendeeCount >= item.maxAttendees;
     
     return (
       <TouchableOpacity
@@ -312,9 +306,9 @@ export default function EventsScreen() {
             </ThemedText>
             
             {/* 候补列表提示 */}
-            {item.waitingList.length > 0 && userStatus !== 'waiting_list' && (
+            {item.waitingListCount > 0 && userStatus !== 'waiting_list' && (
               <ThemedText style={styles.queueHint}>
-                Queue: {item.waitingList.length} people waiting
+                Queue: {item.waitingListCount} people waiting
               </ThemedText>
             )}
           </View>
@@ -459,13 +453,47 @@ export default function EventsScreen() {
     </Modal>
   );
 
+  // Show loading state
+  if (loading && filteredEvents.length === 0) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Header showBackButton={true} title={t('events.title')} />
+        <View style={styles.loadingContainer}>
+          <ThemedText style={styles.loadingText}>🔥 Loading events from Firebase...</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Header showBackButton={true} title={t('events.title')} />
+        <View style={styles.errorContainer}>
+          <ThemedText style={styles.errorText}>❌ Error loading events</ThemedText>
+          <ThemedText style={styles.errorSubtext}>{error}</ThemedText>
+          <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       {/* Header */}
-      <Header
-        showBackButton={true}
-        title={t('events.title')}
-      />
+      <Header showBackButton={true} title={t('events.title')} />
+
+      {/* Firebase Usage Indicator (Development) */}
+      {__DEV__ && (
+        <ThemedView style={[styles.usageIndicator, { backgroundColor: cardBackground, borderColor }]}>
+          <ThemedText style={styles.usageText}>
+            🔥 Today's usage: {todayUsage.reads} reads, {todayUsage.writes} writes
+          </ThemedText>
+        </ThemedView>
+      )}
 
       {/* Add Event Button - Only show for core members */}
       {canCreateEvents && (
@@ -496,8 +524,10 @@ export default function EventsScreen() {
         ListEmptyComponent={
           <ThemedView style={styles.emptyContainer}>
             <ThemedText style={styles.emptyText}>{t('events.noEvents')}</ThemedText>
-            <ThemedText style={styles.emptySubtext}>{t('events.adjustFilters')}</ThemedText>
-            {canCreateEvents && (
+            <ThemedText style={styles.emptySubtext}>
+              {loading ? 'Loading from Firebase...' : t('events.adjustFilters')}
+            </ThemedText>
+            {canCreateEvents && !loading && (
               <TouchableOpacity 
                 style={[styles.createFirstEventButton, { borderColor }]}
                 onPress={handleCreateEvent}
@@ -520,6 +550,55 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#e74c3c',
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#45b7d1',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  usageIndicator: {
+    marginHorizontal: 20,
+    marginVertical: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  usageText: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
   },
   headerActions: {
     paddingHorizontal: 20,
@@ -583,26 +662,52 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     fontWeight: '500',
   },
+  statusBadges: {
+    flexDirection: 'row',
+    gap: 4,
+  },
   todayBadge: {
     backgroundColor: '#e74c3c',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   todayText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
   },
-  soonBadge: {
-    backgroundColor: '#f39c12',
-    paddingHorizontal: 8,
+  fullBadge: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  soonText: {
+  fullText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  registeredBadge: {
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  registeredText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  waitingBadge: {
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  waitingText: {
+    color: 'white',
+    fontSize: 9,
     fontWeight: 'bold',
   },
   eventTitle: {
@@ -649,6 +754,12 @@ const styles = StyleSheet.create({
   attendeeCount: {
     fontSize: 12,
     opacity: 0.6,
+  },
+  queueHint: {
+    fontSize: 11,
+    opacity: 0.6,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   rsvpButton: {
     paddingHorizontal: 16,
@@ -777,48 +888,5 @@ const styles = StyleSheet.create({
   modalShareButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  statusBadges: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  fullBadge: {
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  fullText: {
-    color: 'white',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  registeredBadge: {
-    backgroundColor: '#27ae60',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  registeredText: {
-    color: 'white',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  waitingBadge: {
-    backgroundColor: '#f39c12',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  waitingText: {
-    color: 'white',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  queueHint: {
-    fontSize: 11,
-    opacity: 0.6,
-    fontStyle: 'italic',
-    marginTop: 2,
   },
 });

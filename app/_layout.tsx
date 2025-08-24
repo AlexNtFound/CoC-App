@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 
 import InitialSetupScreen, { checkSetupComplete } from '../components/InitialSetupScreen';
-import { EventProvider } from '../contexts/EventContext';
+import { FirebaseEventProvider } from '../contexts/FirebaseEventContext';
 import { InviteCodeProvider } from '../contexts/InviteCodeContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../contexts/ThemeContext';
@@ -142,9 +142,9 @@ export default function RootLayout() {
         <UserProvider>
           <InviteCodeProvider>
             <UserRoleProvider>
-              <EventProvider>
+              <FirebaseEventProvider>
                 <RootLayoutNav />
-              </EventProvider>
+              </FirebaseEventProvider>
             </UserRoleProvider>
           </InviteCodeProvider>
         </UserProvider>

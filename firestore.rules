@@ -1,0 +1,92 @@
+// firestore.rules - 放在项目根目录
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 活动集合规则
+    match /events/{eventId} {
+      // 所有人都可以读取已发布的活动
+      allow read: if resource.data.isPublished == true;
+      
+      // 只有认证用户可以创建活动
+      allow create: if request.auth != null 
+                    && request.auth.uid == resource.data.organizerId
+                    && validateEventData(request.resource.data);
+      
+      // 只有创建者可以更新和删除自己的活动
+      allow update, delete: if request.auth != null 
+                           && request.auth.uid == resource.data.organizerId;
+      
+      // 允许用户更新参与者列表（RSVP功能）
+      allow update: if request.auth != null
+                    && onlyUpdatingAttendees(request.resource.data, resource.data);
+    }
+    
+    // 用户资料集合规则 (可选)
+    match /users/{userId} {
+      // 用户只能读写自己的资料
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 公告集合规则 (可选)
+    match /announcements/{announcementId} {
+      // 所有人都可以读取公告
+      allow read: if true;
+      
+      // 只有管理员可以创建、更新、删除公告
+      allow create, update, delete: if request.auth != null 
+                                    && isAdmin(request.auth.uid);
+    }
+  }
+  
+  // 验证活动数据的完整性
+  function validateEventData(data) {
+    return data.keys().hasAll(['title', 'description', 'date', 'time', 'location', 'organizer', 'organizerId', 'category']) &&
+           data.title is string && data.title.size() > 0 &&
+           data.description is string &&
+           data.date is string &&
+           data.time is string &&
+           data.location is string && data.location.size() > 0 &&
+           data.organizer is string && data.organizer.size() > 0 &&
+           data.organizerId is string &&
+           data.category in ['worship', 'study', 'fellowship', 'blending', 'prayer'] &&
+           data.attendees is list &&
+           data.waitingList is list &&
+           data.isPublished is bool;
+  }
+  
+  // 检查是否只更新参与者相关字段
+  function onlyUpdatingAttendees(newData, oldData) {
+    return newData.diff(oldData).affectedKeys().hasOnly(['attendees', 'waitingList', 'attendeeCount', 'waitingListCount', 'updatedAt']);
+  }
+  
+  // 检查是否是管理员 (这里需要根据你的用户角色系统调整)
+  function isAdmin(userId) {
+    // 简单实现：检查用户文档中的角色
+    return get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+    
+    // 或者硬编码管理员ID（用于快速测试）
+    // return userId in ['admin-user-id-1', 'admin-user-id-2'];
+  }
+}
+
+/*
+🔒 安全规则说明：
+
+1. 读取权限：所有人都可以读取已发布的活动
+2. 创建权限：认证用户可以创建活动，但必须是活动的组织者
+3. 更新/删除权限：只有活动创建者可以修改或删除自己的活动
+4. RSVP权限：认证用户可以更新参与者列表（加入/退出活动）
+5. 数据验证：确保活动数据包含必要字段且格式正确
+
+🚀 部署规则：
+1. 安装 Firebase CLI: npm install -g firebase-tools
+2. 登录: firebase login
+3. 初始化项目: firebase init firestore
+4. 部署规则: firebase deploy --only firestore:rules
+
+⚠️ 注意事项：
+- 规则部署后需要几分钟生效
+- 建议先在Firebase控制台的Rules Playground中测试
+- 生产环境前务必充分测试所有权限场景
+*/
