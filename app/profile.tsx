@@ -346,7 +346,7 @@ export default function ProfileScreen() {
 
               {userProfile?.role === 'admin' && (
                 <>
-                  <TouchableOpacity 
+                  {/* <TouchableOpacity 
                     style={styles.actionItem}
                     onPress={() => router.push('/user-management')}
                   >
@@ -356,7 +356,7 @@ export default function ProfileScreen() {
                       <ThemedText style={styles.actionSubtitle}>View and manage all users</ThemedText>
                     </View>
                     <ThemedText style={[styles.chevron, { color: borderColor }]}>›</ThemedText>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
 
                   <TouchableOpacity 
                     style={styles.actionItem}

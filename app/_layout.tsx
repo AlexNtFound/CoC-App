@@ -16,7 +16,7 @@ import { UserProvider } from '../contexts/UserContext';
 import { UserRoleProvider } from '../contexts/UserRoleContext';
 import { useRoleSync } from '../hooks/useRoleSync';
 // 新增Firebase相关导入
-import { FirebaseAuthProvider } from '../contexts/FirebaseAuthContext';
+// import { FirebaseAuthProvider } from '../contexts/FirebaseAuthContext';
 import { OpenAccessAuthProvider } from '../contexts/OpenAccessAuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -104,13 +104,13 @@ function RootLayoutNav() {
               presentation: 'modal'
             }} 
           />
-          <Stack.Screen 
+          {/* <Stack.Screen 
             name="user-management" 
             options={{ 
               headerShown: false,
               presentation: 'modal'
             }} 
-          />
+          /> */}
           <Stack.Screen 
             name="invite-code-management" 
             options={{ 
@@ -154,13 +154,13 @@ export default function RootLayout() {
           <InviteCodeProvider>
             <UserRoleProvider>
               {/* 🔥 新增：Firebase Authentication层 */}
-              <FirebaseAuthProvider>
-                <OpenAccessAuthProvider>
-                  <FirebaseEventProvider>
-                    <RootLayoutNav />
-                  </FirebaseEventProvider>
-                </OpenAccessAuthProvider>
-              </FirebaseAuthProvider>
+              {/* <FirebaseAuthProvider> */}
+              <OpenAccessAuthProvider>
+                <FirebaseEventProvider>
+                  <RootLayoutNav />
+                </FirebaseEventProvider>
+              </OpenAccessAuthProvider>
+              {/* </FirebaseAuthProvider> */}
             </UserRoleProvider>
           </InviteCodeProvider>
         </UserProvider>
