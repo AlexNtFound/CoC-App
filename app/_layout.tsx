@@ -1,10 +1,11 @@
-// CoC-App/app/_layout.tsx - Fixed with role synchronization and debugging
+// CoC-App/app/_layout.tsx - 基于原有架构集成Firebase Authentication
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+// import 'react-native-reanimated/lib/reanimated2/js-reanimated';
 
 import InitialSetupScreen, { checkSetupComplete } from '../components/InitialSetupScreen';
 import { FirebaseEventProvider } from '../contexts/FirebaseEventContext';
@@ -14,6 +15,9 @@ import { ThemeProvider as CustomThemeProvider, useTheme } from '../contexts/Them
 import { UserProvider } from '../contexts/UserContext';
 import { UserRoleProvider } from '../contexts/UserRoleContext';
 import { useRoleSync } from '../hooks/useRoleSync';
+// 新增Firebase相关导入
+import { FirebaseAuthProvider } from '../contexts/FirebaseAuthContext';
+import { OpenAccessAuthProvider } from '../contexts/OpenAccessAuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -72,6 +76,13 @@ function RootLayoutNav() {
       <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="login" 
+            options={{ 
+              headerShown: false,
+              presentation: 'modal'
+            }} 
+          />
           <Stack.Screen 
             name="profile" 
             options={{ 
@@ -142,9 +153,14 @@ export default function RootLayout() {
         <UserProvider>
           <InviteCodeProvider>
             <UserRoleProvider>
-              <FirebaseEventProvider>
-                <RootLayoutNav />
-              </FirebaseEventProvider>
+              {/* 🔥 新增：Firebase Authentication层 */}
+              <FirebaseAuthProvider>
+                <OpenAccessAuthProvider>
+                  <FirebaseEventProvider>
+                    <RootLayoutNav />
+                  </FirebaseEventProvider>
+                </OpenAccessAuthProvider>
+              </FirebaseAuthProvider>
             </UserRoleProvider>
           </InviteCodeProvider>
         </UserProvider>
