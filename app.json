@@ -106,17 +106,17 @@
         "projectId": "f5531958-232a-4ef2-b51e-5e729d9a06f3"
       },
       "firebase": {
-        "EXPO_PUBLIC_FB_API_KEY": "${EXPO_PUBLIC_FB_API_KEY}",
-        "EXPO_PUBLIC_FB_AUTH_DOMAIN": "${EXPO_PUBLIC_FB_AUTH_DOMAIN}",
-        "EXPO_PUBLIC_FB_PROJECT_ID": "${EXPO_PUBLIC_FB_PROJECT_ID}",
-        "EXPO_PUBLIC_FB_STORAGE_BUCKET": "${EXPO_PUBLIC_FB_STORAGE_BUCKET}",
-        "EXPO_PUBLIC_FB_MSG_SENDER_ID": "${EXPO_PUBLIC_FB_MSG_SENDER_ID}",
-        "EXPO_PUBLIC_FB_APP_ID": "${EXPO_PUBLIC_FB_APP_ID}",
-        "EXPO_PUBLIC_FB_MEASUREMENT_ID": "${EXPO_PUBLIC_FB_MEASUREMENT_ID}"
+        "EXPO_PUBLIC_FB_API_KEY": "AIzaSyDBRBTJU6onbmqYgIKlHDLofFVKj7Am6i0",
+        "EXPO_PUBLIC_FB_AUTH_DOMAIN": "christians-on-campus-f792d.firebaseapp.com",
+        "EXPO_PUBLIC_FB_PROJECT_ID": "christians-on-campus-f792d",
+        "EXPO_PUBLIC_FB_STORAGE_BUCKET": "christians-on-campus-f792d.firebasestorage.app",
+        "EXPO_PUBLIC_FB_MSG_SENDER_ID": "232802687776",
+        "EXPO_PUBLIC_FB_APP_ID": "1:232802687776:web:4dccb4322012e8b41d1545",
+        "EXPO_PUBLIC_FB_MEASUREMENT_ID": "G-LX5VLFYVZQ"
       },
       "googlecloud": {
-        "EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID": "${EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID}",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID}"
+        "EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID": "232802687776-jtbkh92ebvrva9ke05q817jk3g4e2f03.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "232802687776-ipiisbte5nklp5g6iuoedtlst4558gd7.apps.googleusercontent.com"
       },
       "ios": {
         "googleServicesFile": "./GoogleService-Info.plist"

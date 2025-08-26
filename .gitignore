@@ -59,6 +59,7 @@ firebase-debug.log
 
 # --- TypeScript
 *.tsbuildinfo
+config/app.config.ts
 
 # --- Others (你原有的保留)
 .kotlin/
