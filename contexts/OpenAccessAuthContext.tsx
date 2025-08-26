@@ -1,9 +1,14 @@
-// CoC-App/contexts/OpenAccessAuthContext.tsx - 开放访问 + 权限升级系统
+// CoC-App/contexts/OpenAccessAuthContext.tsx - 开放访问 + 权限升级系统 + Google登录
+import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  GoogleAuthProvider,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -23,6 +28,9 @@ import {
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../config/firebase';
 import type { UserRole } from './UserRoleContext';
+
+// 完成WebBrowser设置用于Google登录
+WebBrowser.maybeCompleteAuthSession();
 
 export interface InviteCode {
   id: string;
@@ -48,6 +56,9 @@ export interface UserProfile {
   createdAt: string;
   lastLoginAt: string;
   isActive: boolean;
+  // 添加登录方式标识
+  authProvider: 'email' | 'google';
+  photoURL?: string; // Google用户头像
   // 权限升级历史
   roleHistory?: {
     previousRole: UserRole;
@@ -67,6 +78,7 @@ interface OpenAccessAuthContextType {
   // 基础认证操作
   signUp: (email: string, password: string, displayName: string, campus: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   
@@ -99,6 +111,30 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const g = (Constants.expoConfig?.extra as any)?.googlecloud || {};
+  const owner = 'alexnan';           // ← 如果你的 Expo owner 不是这个，改成你的
+  const slug  = 'ChristiansOnCampus';    // ← 改成你的 expo.slug
+  const redirectUri = `https://auth.expo.io/@${owner}/${slug}`;
+  console.log('clientId =', (Constants.expoConfig?.extra as any)?.googlecloud?.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID);
+  console.log('redirectUri =', redirectUri); // 这一行你前面已经定义好了
+
+  // Google OAuth配置 - 从app.json中读取配置
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: g.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,     // 只填“Web application”的 clientId
+    iosClientId: g.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    scopes: ['openid', 'email', 'profile'],
+    // 不传 redirectUri，交给库自动生成
+  });
+
+  console.log('AUTO redirectUri =', request?.redirectUri);
+
+  // 处理Google OAuth响应
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleAuthSuccess(authentication);
+    }
+  }, [response]);
 
   // 监听Firebase身份验证状态
   useEffect(() => {
@@ -118,6 +154,57 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     return unsubscribe;
   }, []);
+
+  const handleGoogleAuthSuccess = async (authentication: any) => {
+    try {
+      const { accessToken, idToken } = authentication;
+      
+      // 创建Google凭据
+      const credential = GoogleAuthProvider.credential(idToken, accessToken);
+      
+      // 使用凭据登录Firebase
+      const result = await signInWithCredential(auth, credential);
+      const user = result.user;
+
+      // 检查是否为新用户
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (!userDoc.exists()) {
+        // 新用户 - 创建用户配置文件
+        const userProfile: UserProfile = {
+          uid: user.uid,
+          email: user.email!,
+          displayName: user.displayName || 'Google User',
+          campus: '', // 需要用户后续填写
+          role: 'student', // 默认角色
+          authProvider: 'google',
+          photoURL: user.photoURL,
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+          isActive: true,
+        };
+
+        await setDoc(doc(db, 'users', user.uid), userProfile);
+        console.log('✅ New Google user created successfully');
+
+        // 如果campus为空，可以引导用户完善信息
+        if (!userProfile.campus) {
+          // 这里可以弹出模态框让用户填写campus信息
+          console.log('📝 User needs to complete profile with campus info');
+        }
+      } else {
+        // 现有用户 - 更新最后登录时间
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastLoginAt: new Date().toISOString()
+        });
+        console.log('✅ Existing Google user signed in');
+      }
+
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      throw new Error(error.message || 'Failed to sign in with Google');
+    }
+  };
 
   const loadUserProfile = async (uid: string) => {
     try {
@@ -164,6 +251,7 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
         displayName: displayName,
         campus: campus,
         role: 'student', // 默认角色
+        authProvider: 'email',
         createdAt: new Date().toISOString(),
         lastLoginAt: new Date().toISOString(),
         isActive: true,
@@ -211,6 +299,15 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      await promptAsync(); // 已在 request 里指定了 redirectUri=https://auth.expo.io/...
+    } catch (e:any) {
+      console.error('Google sign-in initiation error:', e);
+      throw new Error('Failed to initiate Google sign-in');
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -247,22 +344,16 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
       }
 
       const inviteDoc = inviteSnapshot.docs[0];
-      const inviteData = { id: inviteDoc.id, ...inviteDoc.data() } as InviteCode;
+      const inviteData = inviteDoc.data() as Omit<InviteCode, 'id'>;
+      
+      return {
+        id: inviteDoc.id,
+        ...inviteData
+      } as InviteCode;
 
-      // 检查是否过期
-      if (new Date(inviteData.expiresAt) < new Date()) {
-        throw new Error('Invite code has expired');
-      }
-
-      // 检查使用次数限制
-      if (inviteData.currentUses >= inviteData.maxUses) {
-        throw new Error('Invite code has reached maximum usage limit');
-      }
-
-      return inviteData;
-    } catch (error) {
-      console.error('Error validating invite code:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('Validate invite code error:', error);
+      throw new Error('Failed to validate invite code');
     }
   };
 
@@ -273,103 +364,95 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     try {
       // 验证邀请码
-      const invite = await validateInviteCode(inviteCode);
+      const inviteCodeData = await validateInviteCode(inviteCode);
       
-      // 检查是否已经有更高或相同权限
+      // 检查邀请码状态
+      if (inviteCodeData.currentUses >= inviteCodeData.maxUses) {
+        throw new Error('Invite code has reached maximum usage limit');
+      }
+
+      if (new Date(inviteCodeData.expiresAt) < new Date()) {
+        throw new Error('Invite code has expired');
+      }
+
+      const currentRole = userProfile.role;
+      const newRole = inviteCodeData.role;
+
+      // 检查角色升级逻辑
       const roleHierarchy: Record<UserRole, number> = {
         'student': 0,
         'core_member': 1,
         'admin': 2
       };
 
-      if (roleHierarchy[userProfile.role] >= roleHierarchy[invite.role]) {
-        throw new Error(`You already have ${userProfile.role} role or higher`);
+      if (roleHierarchy[newRole] <= roleHierarchy[currentRole]) {
+        throw new Error('This invite code cannot upgrade your current role');
       }
 
       // 更新用户角色
       const roleHistoryEntry = {
-        previousRole: userProfile.role,
-        newRole: invite.role,
+        previousRole: currentRole,
+        newRole: newRole,
         upgradeDate: new Date().toISOString(),
         inviteCodeUsed: inviteCode
       };
 
       await updateDoc(doc(db, 'users', currentUser.uid), {
-        role: invite.role,
+        role: newRole,
         inviteCodeUsed: inviteCode,
-        roleHistory: [...(userProfile.roleHistory || []), roleHistoryEntry],
-        roleUpgradedAt: new Date().toISOString()
+        roleHistory: [...(userProfile.roleHistory || []), roleHistoryEntry]
       });
 
-      // 更新邀请码使用状态
-      const newUsedBy = [...(invite.usedBy || []), currentUser.uid];
-      const newCurrentUses = invite.currentUses + 1;
-
-      await updateDoc(doc(db, 'inviteCodes', invite.id), {
-        usedBy: newUsedBy,
-        currentUses: newCurrentUses,
-        isUsed: newCurrentUses >= invite.maxUses,
-        [`usageHistory.${currentUser.uid}`]: {
-          email: currentUser.email,
-          displayName: userProfile.displayName,
-          previousRole: userProfile.role,
-          newRole: invite.role,
-          usedAt: new Date().toISOString()
-        }
+      // 更新邀请码使用次数
+      await updateDoc(doc(db, 'inviteCodes', inviteCodeData.id), {
+        currentUses: inviteCodeData.currentUses + 1,
+        usedBy: [...(inviteCodeData.usedBy || []), currentUser.uid]
       });
 
       // 刷新用户配置文件
       await loadUserProfile(currentUser.uid);
 
-      console.log(`✅ Role upgraded from ${userProfile.role} to ${invite.role}`);
-      return invite.role;
-    } catch (error) {
-      console.error('Error upgrading role:', error);
-      throw error;
+      console.log('✅ Role upgraded successfully');
+      return newRole;
+
+    } catch (error: any) {
+      console.error('Upgrade role error:', error);
+      throw new Error(error.message || 'Failed to upgrade role');
     }
   };
 
   const generateInviteCode = async (
     role: UserRole, 
     description?: string, 
-    maxUses: number = 10
+    maxUses: number = 1
   ): Promise<string> => {
     if (!userProfile || userProfile.role !== 'admin') {
       throw new Error('Only administrators can generate invite codes');
     }
 
     try {
-      // 生成邀请码
-      const prefix = role === 'admin' ? 'AD' : 'CM'; // 只允许生成core_member和admin码
-      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const code = Math.random().toString(36).substring(2, 15) + 
+                   Math.random().toString(36).substring(2, 15);
       
-      let code = prefix + '-';
-      for (let i = 0; i < 4; i++) {
-        let segment = '';
-        for (let j = 0; j < 4; j++) {
-          segment += chars[Math.floor(Math.random() * chars.length)];
-        }
-        code += segment + (i < 3 ? '-' : '');
-      }
-
-      const inviteCode: Omit<InviteCode, 'id'> = {
+      const inviteCodeData = {
         code,
         role,
         createdBy: currentUser!.uid,
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90天过期
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30天后过期
         isUsed: false,
+        usedBy: [],
         maxUses,
         currentUses: 0,
-        description,
+        description: description || `Invite code for ${role} role`
       };
 
-      await addDoc(collection(db, 'inviteCodes'), inviteCode);
-      console.log('✅ Generated invite code:', code);
-      
+      await addDoc(collection(db, 'inviteCodes'), inviteCodeData);
+      console.log('✅ Invite code generated');
       return code;
-    } catch (error) {
-      console.error('Error generating invite code:', error);
+
+    } catch (error: any) {
+      console.error('Generate invite code error:', error);
       throw new Error('Failed to generate invite code');
     }
   };
@@ -381,13 +464,13 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     try {
       await updateDoc(doc(db, 'inviteCodes', codeId), {
-        isUsed: true,
+        isUsed: true, // 标记为已使用来"撤销"它
         revokedAt: new Date().toISOString(),
         revokedBy: currentUser!.uid
       });
-      console.log('✅ Revoked invite code');
-    } catch (error) {
-      console.error('Error revoking invite code:', error);
+      console.log('✅ Invite code revoked');
+    } catch (error: any) {
+      console.error('Revoke invite code error:', error);
       throw new Error('Failed to revoke invite code');
     }
   };
@@ -494,30 +577,42 @@ export const OpenAccessAuthProvider: React.FC<{ children: ReactNode }> = ({ chil
 
   // 计算权限
   const isGuest = !currentUser;
-  const canRegisterForEvents = !!currentUser; // 任何登录用户都可以注册活动
+  const canRegisterForEvents = !isGuest; // 所有认证用户都可以报名活动
   const canCreateEvents = userProfile?.role === 'core_member' || userProfile?.role === 'admin';
   const canManageUsers = userProfile?.role === 'admin';
   const canManageInviteCodes = userProfile?.role === 'admin';
 
   const value: OpenAccessAuthContextType = {
+    // 用户状态
     currentUser,
     userProfile,
     loading,
     isGuest,
+    
+    // 基础认证操作
     signUp,
     signIn,
+    signInWithGoogle,
     signOut: handleSignOut,
     resetPassword: handleResetPassword,
+    
+    // 权限升级
     upgradeRole,
     validateInviteCode,
+    
+    // 管理员功能
     generateInviteCode,
     revokeInviteCode,
     getInviteCodes,
     getAllUsers,
     updateUserRole,
+    
+    // 用户管理
     updateProfile: updateUserProfile,
     deleteAccount,
     refreshUserProfile,
+    
+    // 权限检查
     canRegisterForEvents,
     canCreateEvents,
     canManageUsers,

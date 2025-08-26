@@ -8,7 +8,10 @@
     "scheme": "christiansoncampus",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "description": "A mobile app for Christian campus fellowship, Bible study, and community events",
     "primaryColor": "#45b7d1",
     "splash": {
@@ -31,7 +34,9 @@
         "NSContactsUsageDescription": "This app can help you connect with other campus Christians",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:christiansoncampus.app"]
+      "associatedDomains": [
+        "applinks:christiansoncampus.app"
+      ]
     },
     "android": {
       "package": "com.alex.christiansoncampuszh",
@@ -71,16 +76,26 @@
           "ios": {
             "useFrameworks": "static",
             "extraPods": [
-              { "name": "GoogleUtilities", "modular_headers": true },
-              { "name": "FirebaseCoreInternal", "modular_headers": true },
-              { "name": "FirebaseCore", "modular_headers": true }
+              {
+                "name": "GoogleUtilities",
+                "modular_headers": true
+              },
+              {
+                "name": "FirebaseCoreInternal",
+                "modular_headers": true
+              },
+              {
+                "name": "FirebaseCore",
+                "modular_headers": true
+              }
             ]
           },
           "android": {
             "newArchEnabled": true
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
@@ -98,6 +113,13 @@
         "EXPO_PUBLIC_FB_MSG_SENDER_ID": "232802687776",
         "EXPO_PUBLIC_FB_APP_ID": "1:232802687776:web:4dccb4322012e8b41d1545",
         "EXPO_PUBLIC_FB_MEASUREMENT_ID": "G-LX5VLFYVZQ"
+      },
+      "googlecloud": {
+        "EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID": "232802687776-jtbkh92ebvrva9ke05q817jk3g4e2f03.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "232802687776-ipiisbte5nklp5g6iuoedtlst4558gd7.apps.googleusercontent.com"
+      },
+      "ios": {
+        "googleServicesFile": "./GoogleService-Info.plist"
       }
     },
     "owner": "alexnan"

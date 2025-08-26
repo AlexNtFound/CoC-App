@@ -1,4 +1,5 @@
-// CoC-App/app/login.tsx - 支持访客访问的登录界面
+// CoC-App/app/login.tsx - 支持访客访问的登录界面 + Google登录
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -7,10 +8,9 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../components/Header';
@@ -24,7 +24,7 @@ type AuthMode = 'signin' | 'signup';
 
 export default function LoginScreen() {
   const { t } = useLanguage();
-  const { signIn, signUp } = useOpenAccessAuth();
+  const { signIn, signUp, signInWithGoogle } = useOpenAccessAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -37,6 +37,7 @@ export default function LoginScreen() {
 
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   // 表单数据
   const [formData, setFormData] = useState({
@@ -97,13 +98,17 @@ export default function LoginScreen() {
         'You have successfully signed in.',
         [
           {
-            text: 'Continue',
-            onPress: () => router.back()
-          }
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)'),
+          },
         ]
       );
     } catch (error: any) {
-      Alert.alert('Sign In Failed', error.message);
+      Alert.alert(
+        'Sign In Failed',
+        error.message || 'An error occurred during sign in. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -116,109 +121,124 @@ export default function LoginScreen() {
     
     try {
       await signUp(
-        formData.email.trim(),
-        formData.password,
+        formData.email.trim(), 
+        formData.password, 
         formData.displayName.trim(),
         formData.campus.trim()
       );
       
       Alert.alert(
-        'Welcome!',
-        'Your account has been created successfully. You can now register for events!\n\nTo get additional permissions (like creating events), you can upgrade your role in the Profile section.',
+        'Account Created!',
+        'Your account has been created successfully. Welcome to Christians on Campus!',
         [
           {
-            text: 'Continue',
-            onPress: () => router.back()
-          }
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)'),
+          },
         ]
       );
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message);
+      Alert.alert(
+        'Sign Up Failed',
+        error.message || 'An error occurred during sign up. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleContinueAsGuest = () => {
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    
+    try {
+      await signInWithGoogle();
+      // Note: 成功后会通过auth state change自动导航
+      console.log('Google sign-in initiated successfully');
+    } catch (error: any) {
+      Alert.alert(
+        'Google Sign In Failed',
+        error.message || 'Failed to sign in with Google. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGuestAccess = () => {
     Alert.alert(
       'Continue as Guest',
-      'As a guest, you can browse events but cannot register for them. You can create an account anytime to join events.',
+      'You can browse events and content, but you won\'t be able to register for events or access member features.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
         {
           text: 'Continue',
-          onPress: () => router.back()
-        }
+          onPress: () => router.replace('/(tabs)'),
+        },
       ]
     );
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-        <Header 
-          title="Join Our Community"
-          showBackButton={true}
-          onBackPress={() => router.back()}
-        />
-
+    <ThemedView style={[styles.container, { backgroundColor }]}>
+      <Header title="Welcome" showBackButton={false} />
+      
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.formContainer, { backgroundColor: cardBackground }]}>
-            {/* Welcome Message */}
-            <View style={styles.welcomeSection}>
-              <ThemedText style={styles.title}>Christians on Campus</ThemedText>
+          <View style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
+            <View style={styles.header}>
+              <ThemedText style={styles.title}>
+                {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+              </ThemedText>
               <ThemedText style={styles.subtitle}>
                 {authMode === 'signin' 
-                  ? 'Welcome back! Sign in to register for events and connect with your community.'
-                  : 'Create your account to join events and connect with Christians on your campus.'
-                }
+                  ? 'Welcome back! Sign in to your account.' 
+                  : 'Join our campus community today.'}
               </ThemedText>
             </View>
 
-            {/* Auth Mode Tabs */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  { borderColor },
-                  authMode === 'signin' && { backgroundColor: accentColor }
-                ]}
-                onPress={() => setAuthMode('signin')}
-              >
-                <ThemedText style={[
-                  styles.tabText,
-                  authMode === 'signin' && styles.activeTabText
-                ]}>
-                  Sign In
-                </ThemedText>
-              </TouchableOpacity>
+            {/* Google Sign-In Button */}
+            <TouchableOpacity 
+              style={[styles.googleButton, { borderColor }]}
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading || isLoading}
+            >
+              <Ionicons 
+                name="logo-google" 
+                size={20} 
+                color="#4285F4" 
+                style={styles.googleIcon} 
+              />
+              <ThemedText style={[styles.googleButtonText, { color: textColor }]}>
+                {isGoogleLoading 
+                  ? 'Signing in with Google...' 
+                  : `${authMode === 'signin' ? 'Sign in' : 'Sign up'} with Google`}
+              </ThemedText>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  { borderColor },
-                  authMode === 'signup' && { backgroundColor: accentColor }
-                ]}
-                onPress={() => setAuthMode('signup')}
-              >
-                <ThemedText style={[
-                  styles.tabText,
-                  authMode === 'signup' && styles.activeTabText
-                ]}>
-                  Create Account
-                </ThemedText>
-              </TouchableOpacity>
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={[styles.divider, { backgroundColor: borderColor }]} />
+              <ThemedText style={[styles.dividerText, { color: placeholderColor }]}>
+                or continue with email
+              </ThemedText>
+              <View style={[styles.divider, { backgroundColor: borderColor }]} />
             </View>
 
-            {/* Form Content */}
-            <View style={styles.formContent}>
+            <View style={styles.form}>
               {/* Email Input */}
               <View style={[styles.inputGroup, { borderColor }]}>
                 <ThemedText style={styles.label}>Email *</ThemedText>
@@ -226,7 +246,7 @@ export default function LoginScreen() {
                   style={[styles.input, { color: textColor, borderColor }]}
                   value={formData.email}
                   onChangeText={(text) => setFormData({ ...formData, email: text })}
-                  placeholder="your.email@example.com"
+                  placeholder="Enter your email"
                   placeholderTextColor={placeholderColor}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -301,116 +321,74 @@ export default function LoginScreen() {
               <TouchableOpacity 
                 style={[styles.primaryButton, { backgroundColor: accentColor }]}
                 onPress={authMode === 'signin' ? handleSignIn : handleSignUp}
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
               >
                 <ThemedText style={styles.primaryButtonText}>
                   {isLoading 
                     ? (authMode === 'signin' ? 'Signing In...' : 'Creating Account...') 
-                    : (authMode === 'signin' ? 'Sign In' : 'Create Account')
-                  }
+                    : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
                 </ThemedText>
               </TouchableOpacity>
 
-              {/* Guest Access Button */}
-              <TouchableOpacity 
-                style={[styles.guestButton, { borderColor }]}
-                onPress={handleContinueAsGuest}
-              >
-                <ThemedText style={[styles.guestButtonText, { color: textColor }]}>
-                  👤 Continue as Guest
+              {/* Mode Switch */}
+              <View style={styles.switchContainer}>
+                <ThemedText style={[styles.switchText, { color: placeholderColor }]}>
+                  {authMode === 'signin' 
+                    ? "Don't have an account? " 
+                    : "Already have an account? "}
                 </ThemedText>
-              </TouchableOpacity>
-            </View>
-
-            {/* Info Sections */}
-            <View style={styles.infoSection}>
-              <View style={[styles.infoCard, { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
-                <ThemedText style={styles.infoTitle}>
-                  🎯 What you get with an account:
-                </ThemedText>
-                <View style={styles.benefitsList}>
-                  <ThemedText style={styles.benefitItem}>• Register for events and activities</ThemedText>
-                  <ThemedText style={styles.benefitItem}>• Connect with your campus community</ThemedText>
-                  <ThemedText style={styles.benefitItem}>• Track your event history</ThemedText>
-                  <ThemedText style={styles.benefitItem}>• Upgrade to leadership roles (with invite codes)</ThemedText>
-                </View>
-              </View>
-
-              <View style={[styles.infoCard, { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
-                <ThemedText style={styles.infoTitle}>
-                  🔑 About Role Upgrades:
-                </ThemedText>
-                <ThemedText style={styles.infoText}>
-                  All accounts start as <Text style={styles.roleText}>Student</Text> members. 
-                  Campus leaders can provide invite codes to upgrade to <Text style={styles.roleText}>Core Member</Text> 
-                  (create events) or <Text style={styles.roleText}>Admin</Text> (manage users). 
-                  You can upgrade anytime in your profile settings.
-                </ThemedText>
-              </View>
-            </View>
-
-            {/* Alternative Actions */}
-            <View style={styles.alternativeSection}>
-              {authMode === 'signin' && (
-                <>
-                  <TouchableOpacity 
-                    style={styles.textButton}
-                    onPress={() => {
-                      Alert.prompt(
-                        'Reset Password',
-                        'Please enter your email address:',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Send Reset Email', 
-                            onPress: async (email) => {
-                              if (email) {
-                                try {
-                                  // TODO: Implement password reset
-                                  Alert.alert('Reset Email Sent', 'Check your email for reset instructions.');
-                                } catch (error: any) {
-                                  Alert.alert('Error', error.message);
-                                }
-                              }
-                            }
-                          }
-                        ],
-                        'plain-text',
-                        formData.email
-                      );
-                    }}
-                  >
-                    <ThemedText style={[styles.textButtonText, { color: accentColor }]}>
-                      Forgot Password?
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.textButton}
-                    onPress={() => setAuthMode('signup')}
-                  >
-                    <ThemedText style={[styles.textButtonText, { color: accentColor }]}>
-                      Don't have an account? Create one
-                    </ThemedText>
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {authMode === 'signup' && (
                 <TouchableOpacity 
-                  style={styles.textButton}
-                  onPress={() => setAuthMode('signin')}
+                  onPress={() => {
+                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                    setErrors({});
+                    setFormData({
+                      email: '',
+                      password: '',
+                      confirmPassword: '',
+                      displayName: '',
+                      campus: '',
+                    });
+                  }}
+                  disabled={isLoading || isGoogleLoading}
                 >
-                  <ThemedText style={[styles.textButtonText, { color: accentColor }]}>
-                    Already have an account? Sign In
+                  <ThemedText style={[styles.linkText, { color: accentColor }]}>
+                    {authMode === 'signin' ? 'Sign Up' : 'Sign In'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password - Only show for sign in */}
+              {authMode === 'signin' && (
+                <TouchableOpacity 
+                  style={styles.forgotPasswordContainer}
+                  onPress={() => {
+                    // TODO: Implement forgot password functionality
+                    Alert.alert('Forgot Password', 'This feature will be implemented soon.');
+                  }}
+                  disabled={isLoading || isGoogleLoading}
+                >
+                  <ThemedText style={[styles.forgotPasswordText, { color: accentColor }]}>
+                    Forgot your password?
                   </ThemedText>
                 </TouchableOpacity>
               )}
             </View>
           </View>
+
+          {/* Guest Access */}
+          <TouchableOpacity 
+            style={[styles.guestButton, { borderColor }]}
+            onPress={handleGuestAccess}
+            disabled={isLoading || isGoogleLoading}
+          >
+            <Ionicons name="person-outline" size={20} color={placeholderColor} />
+            <ThemedText style={[styles.guestButtonText, { color: placeholderColor }]}>
+              Continue as Guest
+            </ThemedText>
+          </TouchableOpacity>
         </ScrollView>
-      </ThemedView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedView>
   );
 }
 
@@ -418,62 +396,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     padding: 20,
   },
-  formContainer: {
-    flex: 1,
+  card: {
     borderRadius: 16,
     padding: 24,
+    marginBottom: 20,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 3.84,
   },
-  welcomeSection: {
-    marginBottom: 32,
+  header: {
     alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
     opacity: 0.7,
-    lineHeight: 22,
+    textAlign: 'center',
   },
-  tabContainer: {
+  googleButton: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
   },
-  tabText: {
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  activeTabText: {
-    color: 'white',
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  formContent: {
-    gap: 20,
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    fontSize: 14,
+  },
+  form: {
+    gap: 16,
   },
   inputGroup: {
     marginBottom: 4,
@@ -484,82 +474,61 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
     fontSize: 16,
   },
   errorText: {
-    color: '#FF3B30',
+    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
   },
   primaryButton: {
-    borderRadius: 12,
     paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
   },
   primaryButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  switchText: {
+    fontSize: 14,
+  },
+  linkText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   guestButton: {
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
   },
   guestButtonText: {
     fontSize: 16,
-    fontWeight: '500',
-  },
-  infoSection: {
-    marginTop: 32,
-    gap: 16,
-  },
-  infoCard: {
-    padding: 16,
-    borderRadius: 12,
-  },
-  infoTitle: {
-    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    opacity: 0.7,
-    lineHeight: 20,
-  },
-  benefitsList: {
-    gap: 4,
-  },
-  benefitItem: {
-    fontSize: 14,
-    opacity: 0.7,
-    lineHeight: 20,
-  },
-  roleText: {
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  alternativeSection: {
-    marginTop: 24,
-    alignItems: 'center',
-    gap: 12,
-  },
-  textButton: {
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  textButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
 });
